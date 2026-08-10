@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Generator · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="css/invoice.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ========== FORM PANEL ========== -->
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Invoice Generator</span>
+    </div>
+    <h1>Build an Invoice</h1>
+    <p class="sub">Fill in the fields — the preview on the right updates live. When it's ready, download it as a PDF.</p>
+
+    <fieldset>
+      <legend>Bill To</legend>
+      <label class="first">Client company name</label>
+      <input type="text" id="clientName" placeholder="e.g. HRSB Holdings Sdn Bhd">
+      <label>Attention / contact person</label>
+      <input type="text" id="clientAttn" placeholder="e.g. HR & Finance Department">
+      <label>Client address (optional)</label>
+      <input type="text" id="clientAddr" placeholder="">
+    </fieldset>
+
+    <fieldset>
+      <legend>Invoice Details</legend>
+      <div class="row2">
+        <div>
+          <label class="first">Invoice no.</label>
+          <input type="text" id="invNo" placeholder="e.g. CDW-2026-A102-INV01">
+        </div>
+        <div>
+          <label class="first">Invoice date</label>
+          <input type="date" id="invDate">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Payment due</label>
+          <input type="text" id="invDue" placeholder="e.g. Upon Receipt">
+        </div>
+        <div>
+          <label>Reference quotation no.</label>
+          <input type="text" id="invQuote" placeholder="e.g. CDW-2026-A102/1">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Project</legend>
+      <label class="first">Project name</label>
+      <input type="text" id="projName" placeholder="e.g. HRSB One Payroll Remediation Service">
+      <label>Billing stage</label>
+      <input type="text" id="projStage" placeholder="e.g. Phase A — Comprehensive Development (Weeks 1-2)">
+    </fieldset>
+
+    <fieldset>
+      <legend>Line Items</legend>
+      <div id="itemsContainer"></div>
+      <button type="button" class="add-btn" id="addItemBtn">+ Add line item</button>
+      <label style="margin-top:14px;">SST (%)</label>
+      <input type="number" id="sstPct" value="0" min="0" step="0.01">
+    </fieldset>
+
+    <fieldset>
+      <legend>Payment Schedule Note</legend>
+      <label class="first">Explain what this invoice covers</label>
+      <textarea id="scheduleNote" placeholder="e.g. This invoice covers the 20% Deposit milestone of the 20-40-40 payment schedule set out in Quotation No. XXXX, payable upon project confirmation."></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>Payment Details</legend>
+      <label class="first">Account name</label>
+      <input type="text" id="bankAccName" placeholder="">
+      <label>Bank name</label>
+      <input type="text" id="bankName" placeholder="">
+      <label>Account number</label>
+      <input type="text" id="bankAccNo" placeholder="">
+      <label>Payment method</label>
+      <input type="text" id="bankMethod" placeholder="e.g. Online Banking Transfer / DuitNow" value="Online Banking Transfer / DuitNow">
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes</legend>
+      <div id="notesContainer"></div>
+      <button type="button" class="add-btn" id="addNoteBtn">+ Add note</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Prepared By</legend>
+      <label class="first">Name</label>
+      <input type="text" id="prepName" placeholder="e.g. Muhammad Saiful Iqbal Bin Abdul Rani" value="Muhammad Saiful Iqbal Bin Abdul Rani">
+      <label>Title</label>
+      <input type="text" id="prepTitle" value="Founder / Project Manager, Team ChendAwan">
+      <label>Contact line</label>
+      <input type="text" id="prepContact" value="+60 14-7207787  |  chendawan25@gmail.com">
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary-btn" id="downloadBtn">Download PDF</button>
+      <div class="save-row">
+        <button id="saveDraftBtn">Save draft</button>
+        <button id="loadDraftBtn">Load draft</button>
+        <button id="resetBtn">Reset form</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Drafts are saved on this device only. "Download PDF" renders the preview exactly as shown.</p>
+    </div>
+  </div>
+
+  <!-- ========== PREVIEW PANEL ========== -->
+  <div class="preview-panel">
+    <div id="invoice-sheet">
+      <div class="inv-header">
+        <img src="../../assets/logo.png" alt="ChendAwan">
+        <div class="inv-title">
+          <div class="big">INVOICE</div>
+          <div class="small">Team ChendAwan</div>
+        </div>
+      </div>
+      <hr class="rule">
+
+      <div class="meta-grid">
+        <div class="bill-to">
+          <div class="eyebrow">BILL TO</div>
+          <div class="name" id="pv-clientName">&nbsp;</div>
+          <div class="line" id="pv-clientAttn"></div>
+          <div class="line" id="pv-clientAddr"></div>
+        </div>
+        <div class="meta-right">
+          <div><span class="lab">Invoice No. </span><span class="val" id="pv-invNo"></span></div>
+          <div><span class="lab">Invoice Date </span><span class="val" id="pv-invDate"></span></div>
+          <div><span class="lab">Payment Due </span><span class="val" id="pv-invDue"></span></div>
+          <div><span class="lab">Reference Quotation </span><span class="val" id="pv-invQuote"></span></div>
+        </div>
+      </div>
+
+      <div class="proj-line"><span class="lab">Project: </span><span id="pv-projName"></span></div>
+      <div class="proj-line"><span class="lab">Billing Stage: </span><span id="pv-projStage"></span></div>
+
+      <table class="items">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="num" style="text-align:center;">Qty</th>
+            <th class="num">Unit Price (RM)</th>
+            <th class="num">Amount (RM)</th>
+          </tr>
+        </thead>
+        <tbody id="pv-itemsBody"></tbody>
+        <tbody>
+          <tr class="totals-row"><td colspan="2"></td><td class="lab">Subtotal</td><td class="val" id="pv-subtotal">RM 0.00</td></tr>
+          <tr class="totals-row"><td colspan="2"></td><td class="lab" id="pv-sstLabel">SST (0%)</td><td class="val" id="pv-sstVal">RM 0.00</td></tr>
+          <tr class="totals-row total-due-row"><td colspan="2"></td><td class="lab">TOTAL DUE</td><td class="val" id="pv-total">RM 0.00</td></tr>
+        </tbody>
+      </table>
+
+      <div class="section-heading">Payment Schedule Reference</div>
+      <div class="section-body" id="pv-scheduleNote">&nbsp;</div>
+
+      <div class="section-heading">Payment Details</div>
+      <table class="bank-table">
+        <tr><td class="lab">Account Name:</td><td class="val" id="pv-bankAccName"></td></tr>
+        <tr><td class="lab">Bank Name:</td><td class="val" id="pv-bankName"></td></tr>
+        <tr><td class="lab">Account Number:</td><td class="val" id="pv-bankAccNo"></td></tr>
+        <tr><td class="lab">Payment Method:</td><td class="val" id="pv-bankMethod"></td></tr>
+        <tr><td class="lab">Payment Reference:</td><td class="val" id="pv-invNo2"></td></tr>
+      </table>
+      <div class="footnote">Please use the Invoice No. as the payment reference and email proof of payment to chendawan25@gmail.com.</div>
+
+      <div class="section-heading">Notes</div>
+      <ul class="notes-list" id="pv-notesList"></ul>
+
+      <div class="sig-block">
+        <div class="thanks">Thank you for your business.</div>
+        <div class="prep-name" id="pv-prepName"></div>
+        <div class="prep-role" id="pv-prepTitle"></div>
+        <div class="prep-contact" id="pv-prepContact"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/invoice.js"></script>
+</body>
+</html>

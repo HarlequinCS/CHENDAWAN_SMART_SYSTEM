@@ -1,0 +1,29 @@
+:root {
+  --accent: #156082;
+  --accent-dark: #0f4a63;
+  --ink: #1a1a1a;
+  --grey: #595959;
+  --light-fill: #eaf1f4;
+  --border: #d8dfe3;
+  --page-bg: #f4f6f7;
+  --panel-bg: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+  background: var(--page-bg);
+  color: var(--ink);
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent-dark);
+}
