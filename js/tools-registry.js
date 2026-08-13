@@ -53,4 +53,11 @@ window.CHENDAWAN_TOOLS = [
     href: 'tools/privacy/',
     status: 'ready',
   },
+  {
+    id: 'ica',
+    name: 'Independent Contractor Agreement',
+    description: 'Engage a freelancer or contractor with Appendix A scope and fees.',
+    href: 'tools/ica/',
+    status: 'ready',
+  },
 ];

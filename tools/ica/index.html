@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Independent Contractor Agreement · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="../../css/legal-doc.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Independent Contractor</span>
+    </div>
+    <h1>Independent Contractor Agreement</h1>
+    <p class="sub">Fill the contractor, project, and Appendix A — the legal terms stay fixed. Download as PDF when ready.</p>
+
+    <fieldset>
+      <legend>Document Number</legend>
+      <label class="first">Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the service code, e.g. ICA/2026/001-WSD-100/01</p>
+      <div class="row2">
+        <div>
+          <label>Job no.</label>
+          <div class="inline-row">
+            <input type="number" id="jobNo" min="1" step="1">
+            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
+          </div>
+        </div>
+        <div>
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1">
+        </div>
+      </div>
+      <label>Agreement no.</label>
+      <input type="text" id="docNo" readonly placeholder="Select a service code">
+      <p class="field-hint" id="docNoHint"></p>
+      <label>Related quotation / MSA (optional)</label>
+      <input type="text" id="relatedNo" placeholder="Paste QUO/2026/001-WSD-100/01 to auto-fill">
+    </fieldset>
+
+    <fieldset>
+      <legend>Contractor</legend>
+      <label class="first">Name</label>
+      <input type="text" id="clientName" placeholder="Contractor / freelancer name">
+      <label>NRIC no.</label>
+      <input type="text" id="clientReg" placeholder="e.g. 041212-01-0085">
+      <label>Address</label>
+      <input type="text" id="clientAddr" placeholder="Full address">
+    </fieldset>
+
+    <fieldset>
+      <legend>Project & Fees</legend>
+      <label class="first">Project name</label>
+      <input type="text" id="projName">
+      <label>Total fee (RM)</label>
+      <input type="text" id="totalFee" placeholder="e.g. 3,500.00">
+    </fieldset>
+
+    <fieldset>
+      <legend>Appendix A — Scope of Work</legend>
+      <label class="first">Tasks / deliverables</label>
+      <textarea id="tasks" placeholder="List the tasks and deliverables"></textarea>
+      <label>Milestones</label>
+      <textarea id="milestones" placeholder="Milestone 1, 2, 3…"></textarea>
+      <label>Payment per milestone</label>
+      <textarea id="milestonePay" placeholder="Amount or percentage per milestone"></textarea>
+      <label>Delivery dates</label>
+      <textarea id="deliveryDates" placeholder="Dates or timeline"></textarea>
+      <label>Acceptance criteria</label>
+      <textarea id="acceptance" placeholder="How work is accepted"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dates</legend>
+      <label class="first">Effective date</label>
+      <input type="date" id="effDate">
+      <label>Signature date</label>
+      <input type="date" id="signDate">
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary-btn" id="downloadBtn">Download PDF</button>
+      <button type="button" class="primary-btn print-btn" id="printBtn">Print preview</button>
+      <div class="save-row">
+        <button id="saveDraftBtn">Save draft</button>
+        <button id="loadDraftBtn">Load draft</button>
+        <button id="resetBtn">Reset form</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Drafts are saved on this device only. "Download PDF" renders the preview exactly as shown.</p>
+    </div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="doc-sheet" id="ica-sheet">
+      <div class="doc-header">
+        <div>
+          <img src="../../assets/logo.png" alt="ChendAwan">
+          <div class="doc-brand-name" id="pv-companyName"></div>
+          <div class="doc-brand-tag" id="pv-companyTag"></div>
+        </div>
+        <div class="doc-title">
+          <div class="big">ICA</div>
+          <div class="small" id="pv-companyShort"></div>
+        </div>
+      </div>
+      <hr class="rule">
+      <div class="doc-title" style="text-align:left;margin-bottom:10px;">
+        <div class="big" style="font-size:22px;">INDEPENDENT CONTRACTOR AGREEMENT</div>
+        <div class="small">PROJECT-BASED / CONTRACT FOR SERVICE</div>
+      </div>
+      <div class="doc-ref">
+        <span class="lab">Document No. </span><strong data-bind="docNo" data-ph="—">—</strong>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <span class="lab">Effective Date </span><strong data-bind="effDate" data-format="date" data-ph="—">—</strong>
+      </div>
+      <p class="legal-intro">This Independent Contractor Agreement (“Agreement”) is made on <strong data-bind="effDate" data-format="date" data-ph="[Date]">[Date]</strong> (“Effective Date”).</p>
+
+      <div class="party-block">
+        <div class="eyebrow">COMPANY</div>
+        <div class="name">TEAM CHENDAWAN VENTURES</div>
+        <div class="line">Registration No. 202603212164 (003878769-W)</div>
+        <div class="line">A sole proprietorship duly registered in Malaysia, having its principal place of business at No. 22, Jalan Sutera 4/5, Taman Puteri, 86000 Kluang, Johor, Malaysia.</div>
+      </div>
+      <div class="party-block">
+        <div class="eyebrow">CONTRACTOR</div>
+        <div class="name" data-bind="clientName" data-ph="[Contractor / Freelancer Name]">[Contractor / Freelancer Name]</div>
+        <div class="line">NRIC No. <span data-bind="clientReg" data-ph="[IC Number]">[IC Number]</span></div>
+        <div class="line">Of <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
+      </div>
+      <p class="legal-intro">The Company and the Contractor are hereinafter collectively referred to as the “Parties” and individually as a “Party”.</p>
+
+      <div class="legal-clause">
+        <h2>1. Engagement and Scope of Work</h2>
+        <p>1.1 The Company hereby engages the Contractor, and the Contractor accepts such engagement, to perform the services and deliver the tasks set out in Appendix A (Scope of Work) for the project known as <strong data-bind="projName" data-ph="[Insert Project Name]">[Insert Project Name]</strong> (“Project”).</p>
+        <p>1.2 The Contractor shall perform the services in a professional, diligent, and workmanlike manner and in accordance with any timelines, specifications, and instructions agreed in writing by the Company.</p>
+        <p>1.3 Any work outside Appendix A shall require the Company’s prior written approval and may be subject to additional fees.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>2. Independent Contractor Status</h2>
+        <p>2.1 The Contractor is engaged as an independent contractor and not as an employee, worker, agent, partner, or joint venturer of the Company.</p>
+        <p>2.2 Nothing in this Agreement shall be construed as creating a contract of service, employment relationship, or entitlement to employee benefits.</p>
+        <p>2.3 The Contractor shall be solely responsible for all personal income tax obligations and any statutory obligations applicable to the Contractor’s own business or status. The Contractor shall not be entitled to paid leave, medical benefits, bonuses, EPF contributions, SOCSO, EIS, or any other employee benefits unless required by law or expressly agreed in writing.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>3. Term</h2>
+        <p>3.1 This Agreement shall commence on the Effective Date and shall continue until completion of the Project or earlier termination in accordance with this Agreement.</p>
+        <p>3.2 The Parties may extend or modify the Project term by written agreement.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>4. Fees and Payment</h2>
+        <p>4.1 In consideration of the services, the Company shall pay the Contractor a total fee of RM <strong data-bind="totalFee" data-ph="[Total Amount]">[Total Amount]</strong>, subject to the successful completion of the milestones stated in Appendix A.</p>
+        <p>4.2 Unless otherwise stated in Appendix A, the Company shall pay approved invoices within 7 days of written approval of the relevant deliverables.</p>
+        <p>4.3 The Contractor shall submit invoices in the form reasonably required by the Company, together with supporting evidence of milestone completion where applicable.</p>
+        <p>4.4 The Company may withhold payment for any deliverable that is incomplete, non-conforming, defective, or not reasonably acceptable under Appendix A.</p>
+        <p>4.5 Unless expressly approved in writing, no expense incurred by the Contractor shall be reimbursable by the Company.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>5. Deliverables and Acceptance</h2>
+        <p>5.1 The Contractor shall deliver the work product in the format, quality, and timeline stated in Appendix A.</p>
+        <p>5.2 The Company shall have a reasonable period to review each deliverable and may reject any deliverable that does not materially comply with the agreed specifications.</p>
+        <p>5.3 If the Company identifies defects, omissions, or non-conformities, the Contractor shall remedy the same within a reasonable time at no additional charge, provided the issue arises from the Contractor’s failure to comply with the agreed scope.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>6. Intellectual Property Rights</h2>
+        <p>6.1 Upon full payment of all fees due under this Agreement, all work product specifically created by the Contractor for the Project, including source code, documentation, reports, designs, and other deliverables, shall become the exclusive property of the Company, to the extent permitted by law.</p>
+        <p>6.2 The Contractor hereby irrevocably assigns to the Company all rights, title, and interest in and to such work product, including copyright and other intellectual property rights arising from the Project.</p>
+        <p>6.3 Notwithstanding Clause 6.1, the Contractor retains ownership of pre-existing materials, reusable tools, templates, libraries, methods, know-how, and background intellectual property developed independently of the Project.</p>
+        <p>6.4 To the extent any Contractor background materials are incorporated into the deliverables, the Contractor grants the Company a perpetual, worldwide, royalty-free, non-exclusive licence to use such materials for the Company’s business purposes in connection with the Project.</p>
+        <p>6.5 The Contractor shall not use the Company’s name, logo, or deliverables for marketing, portfolio, or promotional purposes without the Company’s prior written consent.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>7. Confidentiality</h2>
+        <p>7.1 The Contractor shall keep strictly confidential all confidential information, source code, vulnerabilities, client data, business operations, security findings, technical information, and any other non-public information disclosed by or on behalf of the Company.</p>
+        <p>7.2 The Contractor shall use such confidential information solely for the purpose of performing the services under this Agreement and shall not disclose it to any third party except with the Company’s prior written consent or as required by law.</p>
+        <p>7.3 This confidentiality obligation shall survive termination of this Agreement.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>8. Data Security</h2>
+        <p>8.1 The Contractor shall take reasonable and appropriate measures to protect the confidentiality, integrity, and availability of any Company or client data accessed during the Project.</p>
+        <p>8.2 The Contractor shall promptly notify the Company of any actual or suspected unauthorised access, disclosure, loss, or compromise of data or systems.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>9. Return of Property</h2>
+        <p>Upon completion or termination of this Agreement, the Contractor shall promptly return or securely destroy all Company property, documents, records, credentials, data, and materials in the Contractor’s possession or control, except as otherwise required by law.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>10. Termination</h2>
+        <p>10.1 Either Party may terminate this Agreement by giving 7 days’ written notice to the other Party.</p>
+        <p>10.2 The Company may terminate this Agreement immediately by written notice if the Contractor:</p>
+        <ul>
+          <li>materially breaches this Agreement;</li>
+          <li>fails to deliver the agreed work;</li>
+          <li>commits misconduct, fraud, negligence, or wilful default; or</li>
+          <li>breaches confidentiality or data security obligations.</li>
+        </ul>
+        <p>10.3 If the Contractor terminates before completion, or if the Company terminates due to the Contractor’s failure to deliver or breach, the Company may withhold pending payments and/or pay only for usable work satisfactorily completed up to the termination date.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>11. Warranties</h2>
+        <p>The Contractor represents and warrants that:</p>
+        <ul>
+          <li>the Contractor has the skill and authority to perform the services;</li>
+          <li>the deliverables will not knowingly infringe third-party rights;</li>
+          <li>the Contractor will perform the services in compliance with applicable laws; and</li>
+          <li>the Contractor will not introduce malicious code, backdoors, or unauthorised access mechanisms into any deliverables.</li>
+        </ul>
+      </div>
+      <div class="legal-clause">
+        <h2>12. Limitation of Authority</h2>
+        <p>The Contractor shall have no authority to bind the Company, incur liabilities on behalf of the Company, or make representations on behalf of the Company unless expressly authorised in writing.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>13. Governing Law and Jurisdiction</h2>
+        <p>This Agreement shall be governed by and construed in accordance with the laws of Malaysia. The Parties irrevocably submit to the exclusive jurisdiction of the courts of Malaysia.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>14. Entire Agreement</h2>
+        <p>This Agreement, together with Appendix A, constitutes the entire agreement between the Parties with respect to the Project and supersedes all prior discussions, understandings, or arrangements relating to the same subject matter.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>15. Amendment</h2>
+        <p>No amendment or variation of this Agreement shall be effective unless made in writing and signed by both Parties.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>16. Severability</h2>
+        <p>If any provision of this Agreement is held to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.</p>
+      </div>
+      <div class="legal-clause">
+        <h2>17. Counterparts</h2>
+        <p>This Agreement may be executed in counterparts, each of which shall be deemed an original, and all of which together shall constitute one instrument.</p>
+      </div>
+
+      <div class="legal-clause">
+        <h2>Appendix A — Scope of Work</h2>
+        <p><strong>Project Name:</strong> <span data-bind="projName" data-ph="[Insert Project Name]">[Insert Project Name]</span></p>
+        <p><strong>Tasks / Deliverables:</strong></p>
+        <p data-bind="tasks" data-ph="[Insert details]">[Insert details]</p>
+        <p><strong>Milestones:</strong></p>
+        <p data-bind="milestones" data-ph="[Insert milestone 1, 2, 3]">[Insert milestone 1, 2, 3]</p>
+        <p><strong>Payment per Milestone:</strong></p>
+        <p data-bind="milestonePay" data-ph="[Insert amount / percentage]">[Insert amount / percentage]</p>
+        <p><strong>Delivery Dates:</strong></p>
+        <p data-bind="deliveryDates" data-ph="[Insert dates]">[Insert dates]</p>
+        <p><strong>Acceptance Criteria:</strong></p>
+        <p data-bind="acceptance" data-ph="[Insert criteria]">[Insert criteria]</p>
+      </div>
+
+      <div class="sig-grid">
+        <div class="sig-card">
+          <div class="sig-label">For and on behalf of Team ChendAwan Ventures</div>
+          <div class="row">Name: MUHAMMAD SAIFUL IQBAL BIN ABDUL RANI</div>
+          <div class="row">Title: Owner / Sole Proprietor</div>
+          <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
+          <div class="sig-line">Signature</div>
+        </div>
+        <div class="sig-card">
+          <div class="sig-label">Acknowledged and Accepted by Contractor</div>
+          <div class="row">Name: <span data-bind="clientName" data-ph="[Contractor Name]">[Contractor Name]</span></div>
+          <div class="row">NRIC No.: <span data-bind="clientReg" data-ph="[IC Number]">[IC Number]</span></div>
+          <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
+          <div class="sig-line">Signature</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/service-codes.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
+<script src="../../js/legal-common.js"></script>
+<script src="js/ica.js"></script>
+</body>
+</html>

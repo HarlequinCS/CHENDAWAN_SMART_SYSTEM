@@ -44,6 +44,10 @@
   margin: 0 0 8px;
 }
 
+.legal-clause p[data-bind] {
+  white-space: pre-wrap;
+}
+
 .legal-clause ul,
 .legal-clause ol {
   margin: 4px 0 8px;
