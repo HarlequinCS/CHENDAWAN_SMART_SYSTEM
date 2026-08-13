@@ -33,26 +33,37 @@
 
     <fieldset>
       <legend>Invoice Details</legend>
+      <label class="first">Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the service code, e.g. INV/2026/001-WSD-100/01</p>
       <div class="row2">
         <div>
-          <label class="first">Invoice no.</label>
-          <input type="text" id="invNo" placeholder="e.g. TCV-2026-001">
+          <label>Job no.</label>
+          <div class="inline-row">
+            <input type="number" id="jobNo" min="1" step="1">
+            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
+          </div>
         </div>
         <div>
-          <label class="first">Invoice date</label>
-          <input type="date" id="invDate">
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1">
         </div>
       </div>
+      <label>Invoice no.</label>
+      <input type="text" id="invNo" readonly placeholder="Select a service code">
+      <p class="field-hint" id="invNoHint"></p>
       <div class="row2">
+        <div>
+          <label>Invoice date</label>
+          <input type="date" id="invDate">
+        </div>
         <div>
           <label>Payment due</label>
           <input type="text" id="invDue" placeholder="e.g. Upon Receipt">
         </div>
-        <div>
-          <label>Reference quotation no.</label>
-          <input type="text" id="invQuote" placeholder="e.g. TCV-2026-001">
-        </div>
       </div>
+      <label>Reference quotation no.</label>
+      <input type="text" id="invQuote" placeholder="Paste QUO/2026/001-WSD-100/01 to auto-fill">
     </fieldset>
 
     <fieldset>
@@ -199,6 +210,7 @@
 <script src="../../js/company-defaults.js"></script>
 <script src="../../js/service-codes.js"></script>
 <script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
 <script src="js/invoice.js"></script>
 </body>
 </html>

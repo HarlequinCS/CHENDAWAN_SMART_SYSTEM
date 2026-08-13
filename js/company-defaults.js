@@ -8,10 +8,10 @@ window.TCV_COMPANY = {
   form: 'Sole Proprietorship',
   ssmNo: '202603212164 (003878769-W)',
   address: 'No. 22, Jalan Sutera 4/5, Taman Puteri, 86000 Kluang, Johor, Malaysia',
-  phone: '+60 17-7877958',
+  phone: '+60 14-720 7787',
   email: 'iqbal.chendawan@gmail.com',
   ownerName: 'Muhammad Saiful Iqbal Bin Abdul Rani',
   ownerTitle: 'Sole Proprietor, Team ChendAwan Ventures',
-  contactLine: '+60 17-7877958  |  iqbal.chendawan@gmail.com',
+  contactLine: '+60 14-720 7787  |  iqbal.chendawan@gmail.com',
   bankMethod: 'Online Banking Transfer / DuitNow',
 };

@@ -31,18 +31,35 @@
 
     <fieldset>
       <legend>Receipt Details</legend>
+      <label class="first">Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the service code, e.g. RCP/2026/001-WSD-100/01</p>
       <div class="row2">
         <div>
-          <label class="first">Receipt no.</label>
-          <input type="text" id="receiptNo" placeholder="e.g. TCV-2026-001-RCT01">
+          <label>Job no.</label>
+          <div class="inline-row">
+            <input type="number" id="jobNo" min="1" step="1">
+            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
+          </div>
         </div>
         <div>
-          <label class="first">Date received</label>
-          <input type="date" id="receiptDate">
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1">
         </div>
       </div>
-      <label>Reference invoice</label>
-      <input type="text" id="refInvoice" placeholder="e.g. TCV-2026-001">
+      <label>Receipt no.</label>
+      <input type="text" id="receiptNo" readonly placeholder="Select a service code">
+      <p class="field-hint" id="receiptNoHint"></p>
+      <div class="row2">
+        <div>
+          <label>Date received</label>
+          <input type="date" id="receiptDate">
+        </div>
+        <div>
+          <label>Reference invoice</label>
+          <input type="text" id="refInvoice" placeholder="Paste INV/2026/001-WSD-100/01 to auto-fill">
+        </div>
+      </div>
     </fieldset>
 
     <fieldset>
@@ -164,7 +181,9 @@
 </div>
 
 <script src="../../js/company-defaults.js"></script>
+<script src="../../js/service-codes.js"></script>
 <script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
 <script src="js/receipt.js"></script>
 </body>
 </html>

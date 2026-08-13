@@ -33,18 +33,35 @@
 
     <fieldset>
       <legend>Quotation Details</legend>
+      <label class="first">Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the service code, e.g. QUO/2026/001-WSD-100/01</p>
       <div class="row2">
         <div>
-          <label class="first">Quotation no.</label>
-          <input type="text" id="quoteNo" placeholder="e.g. TCV-2026-001">
+          <label>Job no.</label>
+          <div class="inline-row">
+            <input type="number" id="jobNo" min="1" step="1">
+            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
+          </div>
         </div>
         <div>
-          <label class="first">Date</label>
-          <input type="date" id="quoteDate">
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1">
         </div>
       </div>
-      <label>Valid until</label>
-      <input type="date" id="quoteValid">
+      <label>Quotation no.</label>
+      <input type="text" id="quoteNo" readonly placeholder="Select a service code">
+      <p class="field-hint" id="quoteNoHint"></p>
+      <div class="row2">
+        <div>
+          <label>Date</label>
+          <input type="date" id="quoteDate">
+        </div>
+        <div>
+          <label>Valid until</label>
+          <input type="date" id="quoteValid">
+        </div>
+      </div>
     </fieldset>
 
     <fieldset>
@@ -175,6 +192,7 @@
 <script src="../../js/company-defaults.js"></script>
 <script src="../../js/service-codes.js"></script>
 <script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
 <script src="js/quotation.js"></script>
 </body>
 </html>

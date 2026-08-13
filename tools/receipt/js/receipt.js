@@ -71,6 +71,9 @@ function collectState() {
   const fieldIds = [
     'clientName',
     'clientAttn',
+    'serviceCode',
+    'jobNo',
+    'issueNo',
     'receiptNo',
     'receiptDate',
     'refInvoice',
@@ -101,13 +104,20 @@ function applyState(state) {
     if (el) el.value = state.fields[id];
   });
   (state.notes || []).forEach((n) => addNote(n));
-  renderPreview();
+  if (numbering) numbering.refresh();
+  else renderPreview();
 }
 
 function defaultState() {
   const c = D.companyDefaults();
+  const N = window.TCVNumbers;
   return {
     fields: {
+      serviceCode: '',
+      jobNo: String(N.peekNextJob()),
+      issueNo: '1',
+      receiptNo: '',
+      receiptDate: N.isoToday(),
       payMethod: c.bankMethod,
       prepName: c.prepName,
       prepTitle: c.prepTitle,
@@ -124,9 +134,23 @@ function defaultState() {
   };
 }
 
+let numbering;
+
 document.addEventListener('DOMContentLoaded', () => {
   D.bindLivePreview(renderPreview);
   D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
+
+  numbering = window.TCVNumbers.bind({
+    prefix: window.TCVNumbers.PREFIX.receipt,
+    noId: 'receiptNo',
+    serviceId: 'serviceCode',
+    jobId: 'jobNo',
+    issueId: 'issueNo',
+    relatedId: 'refInvoice',
+    nextBtnId: 'nextJobBtn',
+    hintId: 'receiptNoHint',
+    onChange: renderPreview,
+  });
 
   document.getElementById('amount').addEventListener('input', () => {
     if (!wordsManual) {
@@ -141,8 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
   document.getElementById('downloadBtn').addEventListener('click', () => {
+    if (numbering) numbering.commit();
     const no = document.getElementById('receiptNo').value.trim() || 'receipt';
     D.downloadPdf('receipt-sheet', D.safeFilename('Receipt', no));
   });
   applyState(defaultState());
+  numbering.refresh();
 });

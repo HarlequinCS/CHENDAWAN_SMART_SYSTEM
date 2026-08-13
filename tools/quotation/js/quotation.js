@@ -32,7 +32,10 @@ function makeItemBlock(id, data) {
 function addItem(data) {
   itemCount++;
   const id = 'item' + itemCount;
-  const block = makeItemBlock(id, data);
+  const primary = (document.getElementById('serviceCode') || {}).value || '';
+  const seeded = data || { code: primary, desc: '', sub: '', qty: '1', price: '', amount: '' };
+  if (!seeded.code && primary) seeded.code = primary;
+  const block = makeItemBlock(id, seeded);
   document.getElementById('itemsContainer').appendChild(block);
   const codeSel = block.querySelector('.it-code');
   const descInput = block.querySelector('.it-desc');
@@ -46,6 +49,10 @@ function addItem(data) {
     block.remove();
     renderPreview();
   });
+  if (seeded.code && !seeded.desc) {
+    const svc = window.tcvFindService(seeded.code);
+    if (svc && descInput && !descInput.value.trim()) descInput.value = svc.name;
+  }
   renderPreview();
 }
 
@@ -165,6 +172,9 @@ function collectState() {
     'clientName',
     'clientAttn',
     'clientAddr',
+    'serviceCode',
+    'jobNo',
+    'issueNo',
     'quoteNo',
     'quoteDate',
     'quoteValid',
@@ -205,13 +215,21 @@ function applyState(state) {
     addDynamicRow('scheduleContainer', 'schedule-text', 'e.g. 20% Deposit: Upon project confirmation', t, 'schedule')
   );
   (state.terms || []).forEach((t) => addDynamicRow('termsContainer', 'term-text', 'Add a term...', t, 'term'));
-  renderPreview();
+  if (numbering) numbering.refresh();
+  else renderPreview();
 }
 
 function defaultState() {
   const c = D.companyDefaults();
+  const N = window.TCVNumbers;
   return {
     fields: {
+      serviceCode: '',
+      jobNo: String(N.peekNextJob()),
+      issueNo: '1',
+      quoteNo: '',
+      quoteDate: N.isoToday(),
+      quoteValid: N.isoPlusDays(30),
       prepName: c.prepName,
       prepTitle: c.prepTitle,
       prepContact: c.prepContact,
@@ -232,9 +250,21 @@ function defaultState() {
   };
 }
 
+let numbering;
+
 document.addEventListener('DOMContentLoaded', () => {
   D.bindLivePreview(renderPreview);
   D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
+  numbering = window.TCVNumbers.bind({
+    prefix: window.TCVNumbers.PREFIX.quotation,
+    noId: 'quoteNo',
+    serviceId: 'serviceCode',
+    jobId: 'jobNo',
+    issueId: 'issueNo',
+    nextBtnId: 'nextJobBtn',
+    hintId: 'quoteNoHint',
+    onChange: renderPreview,
+  });
   document.getElementById('addItemBtn').addEventListener('click', () => addItem());
   document.getElementById('addExtraBtn').addEventListener('click', () =>
     addDynamicRow('extrasContainer', 'extra-text', 'Item outside scope and how it will be billed', '', 'extra')
@@ -246,8 +276,10 @@ document.addEventListener('DOMContentLoaded', () => {
     addDynamicRow('termsContainer', 'term-text', 'Add a term...', '', 'term')
   );
   document.getElementById('downloadBtn').addEventListener('click', () => {
+    if (numbering) numbering.commit();
     const no = document.getElementById('quoteNo').value.trim() || 'quotation';
     D.downloadPdf('quote-sheet', D.safeFilename('Quotation', no));
   });
   applyState(defaultState());
+  numbering.refresh();
 });

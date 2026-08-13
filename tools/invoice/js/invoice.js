@@ -30,9 +30,17 @@ function makeItemBlock(id, data) {
 function addItem(data) {
   itemCount++;
   const id = 'item' + itemCount;
-  const block = makeItemBlock(id, data);
+  const primary = (document.getElementById('serviceCode') || {}).value || '';
+  const seeded = data || { code: primary, desc: '', sub: '', qty: '1', price: '', amount: '' };
+  if (!seeded.code && primary) seeded.code = primary;
+  const block = makeItemBlock(id, seeded);
   document.getElementById('itemsContainer').appendChild(block);
   attachItemListeners(block);
+  if (seeded.code && !seeded.desc) {
+    const svc = window.tcvFindService(seeded.code);
+    const descInput = block.querySelector('.it-desc');
+    if (svc && descInput && !descInput.value.trim()) descInput.value = svc.name;
+  }
   renderPreview();
 }
 
@@ -177,6 +185,9 @@ function collectState() {
     'clientName',
     'clientAttn',
     'clientAddr',
+    'serviceCode',
+    'jobNo',
+    'issueNo',
     'invNo',
     'invDate',
     'invDue',
@@ -211,13 +222,21 @@ function applyState(state) {
   });
   (state.items || []).forEach((it) => addItem(it));
   (state.notes || []).forEach((n) => addNote(n));
-  renderPreview();
+  if (numbering) numbering.refresh();
+  else renderPreview();
 }
 
 function defaultState() {
   const c = D.companyDefaults();
+  const N = window.TCVNumbers;
   return {
     fields: {
+      serviceCode: '',
+      jobNo: String(N.peekNextJob()),
+      issueNo: '1',
+      invNo: '',
+      invDate: N.isoToday(),
+      invDue: 'Upon Receipt',
       bankMethod: c.bankMethod,
       prepName: c.prepName,
       prepTitle: c.prepTitle,
@@ -233,6 +252,8 @@ function defaultState() {
   };
 }
 
+let numbering;
+
 document.addEventListener('DOMContentLoaded', () => {
   D.bindLivePreview(renderPreview);
   D.bindDraftActions({
@@ -241,11 +262,24 @@ document.addEventListener('DOMContentLoaded', () => {
     applyState,
     defaultState,
   });
+  numbering = window.TCVNumbers.bind({
+    prefix: window.TCVNumbers.PREFIX.invoice,
+    noId: 'invNo',
+    serviceId: 'serviceCode',
+    jobId: 'jobNo',
+    issueId: 'issueNo',
+    relatedId: 'invQuote',
+    nextBtnId: 'nextJobBtn',
+    hintId: 'invNoHint',
+    onChange: renderPreview,
+  });
   document.getElementById('addItemBtn').addEventListener('click', () => addItem());
   document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
   document.getElementById('downloadBtn').addEventListener('click', () => {
+    if (numbering) numbering.commit();
     const invNo = document.getElementById('invNo').value.trim() || 'invoice';
     D.downloadPdf('invoice-sheet', D.safeFilename('Invoice', invNo));
   });
   applyState(defaultState());
+  numbering.refresh();
 });
