@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt Maker · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="css/receipt.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Receipt Maker</span>
+    </div>
+    <h1>Issue a Receipt</h1>
+    <p class="sub">Fill in the fields — the preview on the right updates live. When it's ready, download it as a PDF.</p>
+
+    <fieldset>
+      <legend>Received From</legend>
+      <label class="first">Client company name</label>
+      <input type="text" id="clientName" placeholder="e.g. HRSB Holdings Sdn Bhd">
+      <label>Attention / contact person</label>
+      <input type="text" id="clientAttn" placeholder="e.g. HR & Finance Department">
+    </fieldset>
+
+    <fieldset>
+      <legend>Receipt Details</legend>
+      <div class="row2">
+        <div>
+          <label class="first">Receipt no.</label>
+          <input type="text" id="receiptNo" placeholder="e.g. TCV-2026-001-RCT01">
+        </div>
+        <div>
+          <label class="first">Date received</label>
+          <input type="date" id="receiptDate">
+        </div>
+      </div>
+      <label>Reference invoice</label>
+      <input type="text" id="refInvoice" placeholder="e.g. TCV-2026-001">
+    </fieldset>
+
+    <fieldset>
+      <legend>Project</legend>
+      <label class="first">Project name</label>
+      <input type="text" id="projName" placeholder="e.g. Custom Web Portal Development">
+      <label>For (milestone / purpose)</label>
+      <input type="text" id="projFor" placeholder="e.g. Phase A — Deposit Payment / Milestone 1">
+    </fieldset>
+
+    <fieldset>
+      <legend>Payment</legend>
+      <label class="first">Amount received (RM)</label>
+      <input type="number" id="amount" step="0.01" min="0" placeholder="0.00">
+      <label>Payment method</label>
+      <input type="text" id="payMethod" placeholder="e.g. Online Banking Transfer / DuitNow">
+      <label>Payment reference</label>
+      <input type="text" id="payRef" placeholder="Transaction ID / Reference No.">
+      <label>Amount in words</label>
+      <input type="text" id="amountWords" placeholder="Auto-filled from amount — you can edit">
+      <label>Outstanding balance</label>
+      <input type="text" id="outstanding" placeholder='e.g. RM 0.00 — or "Nil / Paid in Full"'>
+    </fieldset>
+
+    <fieldset>
+      <legend>Acknowledgement</legend>
+      <label class="first">Acknowledgement of payment</label>
+      <textarea id="ackNote" placeholder="e.g. This receipt confirms receipt of the deposit payment for the above project. The remaining balance will be invoiced upon completion of subsequent milestones."></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes</legend>
+      <div id="notesContainer"></div>
+      <button type="button" class="add-btn" id="addNoteBtn">+ Add note</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Prepared By</legend>
+      <label class="first">Name</label>
+      <input type="text" id="prepName">
+      <label>Title</label>
+      <input type="text" id="prepTitle">
+      <label>Contact line</label>
+      <input type="text" id="prepContact">
+      <label>SSM Registration No.</label>
+      <input type="text" id="ssmNo">
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary-btn" id="downloadBtn">Download PDF</button>
+      <div class="save-row">
+        <button id="saveDraftBtn">Save draft</button>
+        <button id="loadDraftBtn">Load draft</button>
+        <button id="resetBtn">Reset form</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Drafts are saved on this device only. "Download PDF" renders the preview exactly as shown.</p>
+    </div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="doc-sheet" id="receipt-sheet">
+      <div class="doc-header">
+        <div>
+          <img src="../../assets/logo.png" alt="ChendAwan">
+          <div class="doc-brand-name" id="pv-companyName"></div>
+          <div class="doc-brand-tag" id="pv-companyTag"></div>
+        </div>
+        <div class="doc-title">
+          <div class="big">RECEIPT</div>
+          <div class="small" id="pv-companyShort"></div>
+        </div>
+      </div>
+      <hr class="rule">
+
+      <div class="meta-grid">
+        <div class="bill-to">
+          <div class="eyebrow">RECEIVED FROM</div>
+          <div class="name" id="pv-clientName">&nbsp;</div>
+          <div class="line" id="pv-clientAttn"></div>
+        </div>
+        <div class="meta-right">
+          <div><span class="lab">Receipt No. </span><span class="val" id="pv-receiptNo"></span></div>
+          <div><span class="lab">Date Received </span><span class="val" id="pv-receiptDate"></span></div>
+          <div><span class="lab">Reference Invoice </span><span class="val" id="pv-refInvoice"></span></div>
+        </div>
+      </div>
+
+      <div class="proj-line"><span class="lab">Project: </span><span id="pv-projName"></span></div>
+      <div class="proj-line"><span class="lab">For: </span><span id="pv-projFor"></span></div>
+
+      <div class="amount-hero">
+        <div class="lab">AMOUNT RECEIVED</div>
+        <div class="val" id="pv-amount">RM 0.00</div>
+      </div>
+
+      <table class="bank-table">
+        <tr><td class="lab">Payment Method:</td><td class="val" id="pv-payMethod"></td></tr>
+        <tr><td class="lab">Payment Reference:</td><td class="val" id="pv-payRef"></td></tr>
+        <tr><td class="lab">Amount in Words:</td><td class="val" id="pv-amountWords"></td></tr>
+        <tr><td class="lab">Outstanding Balance:</td><td class="val" id="pv-outstanding"></td></tr>
+      </table>
+
+      <div class="section-heading">Acknowledgement</div>
+      <div class="section-body" id="pv-ackNote">&nbsp;</div>
+
+      <div class="section-heading">Notes</div>
+      <ul class="notes-list" id="pv-notesList"></ul>
+
+      <div class="sig-block">
+        <div class="thanks">Thank you for your business.</div>
+        <div class="prep-name" id="pv-prepName"></div>
+        <div class="prep-role" id="pv-prepTitle"></div>
+        <div class="prep-contact" id="pv-prepContact"></div>
+        <div class="prep-ssm" id="pv-ssmNo"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="js/receipt.js"></script>
+</body>
+</html>

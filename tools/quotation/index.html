@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice Generator · ChendAwan Tools</title>
+  <title>Quotation Builder · ChendAwan Tools</title>
   <link rel="stylesheet" href="../../css/shared.css">
   <link rel="stylesheet" href="../../css/doc-tool.css">
-  <link rel="stylesheet" href="css/invoice.css">
+  <link rel="stylesheet" href="css/quotation.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -16,9 +16,9 @@
     <a class="back-link" href="../../">← Back to Tools</a>
     <div class="brand-row">
       <img src="../../assets/logo.png" alt="ChendAwan">
-      <span>Invoice Generator</span>
+      <span>Quotation Builder</span>
     </div>
-    <h1>Build an Invoice</h1>
+    <h1>Build a Quotation</h1>
     <p class="sub">Fill in the fields — the preview on the right updates live. When it's ready, download it as a PDF.</p>
 
     <fieldset>
@@ -32,67 +32,51 @@
     </fieldset>
 
     <fieldset>
-      <legend>Invoice Details</legend>
+      <legend>Quotation Details</legend>
       <div class="row2">
         <div>
-          <label class="first">Invoice no.</label>
-          <input type="text" id="invNo" placeholder="e.g. TCV-2026-001">
+          <label class="first">Quotation no.</label>
+          <input type="text" id="quoteNo" placeholder="e.g. TCV-2026-001">
         </div>
         <div>
-          <label class="first">Invoice date</label>
-          <input type="date" id="invDate">
+          <label class="first">Date</label>
+          <input type="date" id="quoteDate">
         </div>
       </div>
-      <div class="row2">
-        <div>
-          <label>Payment due</label>
-          <input type="text" id="invDue" placeholder="e.g. Upon Receipt">
-        </div>
-        <div>
-          <label>Reference quotation no.</label>
-          <input type="text" id="invQuote" placeholder="e.g. TCV-2026-001">
-        </div>
-      </div>
+      <label>Valid until</label>
+      <input type="date" id="quoteValid">
     </fieldset>
 
     <fieldset>
       <legend>Project</legend>
       <label class="first">Project name</label>
-      <input type="text" id="projName" placeholder="e.g. HRSB One Payroll Remediation Service">
-      <label>Billing stage</label>
-      <input type="text" id="projStage" placeholder="e.g. Phase A — Development / Milestone 1">
+      <input type="text" id="projName" placeholder="e.g. Custom Web Portal Development">
+      <label>Project summary</label>
+      <textarea id="projSummary" placeholder="2–4 sentence overview of the scope, deliverables, phases, and timeline."></textarea>
     </fieldset>
 
     <fieldset>
       <legend>Line Items</legend>
       <div id="itemsContainer"></div>
       <button type="button" class="add-btn" id="addItemBtn">+ Add line item</button>
-      <label style="margin-top:14px;">SST (%)</label>
-      <input type="number" id="sstPct" value="0" min="0" step="0.01">
     </fieldset>
 
     <fieldset>
-      <legend>Payment Schedule Note</legend>
-      <label class="first">Explain what this invoice covers</label>
-      <textarea id="scheduleNote" placeholder="e.g. This invoice covers the 20% Deposit milestone of the 20-40-40 payment schedule set out in Quotation No. TCV-2026-001, payable upon project confirmation."></textarea>
+      <legend>Additional Charges & Scope Limitations</legend>
+      <div id="extrasContainer"></div>
+      <button type="button" class="add-btn" id="addExtraBtn">+ Add out-of-scope item</button>
     </fieldset>
 
     <fieldset>
-      <legend>Payment Details</legend>
-      <label class="first">Account name</label>
-      <input type="text" id="bankAccName" placeholder="">
-      <label>Bank name</label>
-      <input type="text" id="bankName" placeholder="">
-      <label>Account number</label>
-      <input type="text" id="bankAccNo" placeholder="">
-      <label>Payment method</label>
-      <input type="text" id="bankMethod" placeholder="e.g. Online Banking Transfer / DuitNow">
+      <legend>Payment Schedule</legend>
+      <div id="scheduleContainer"></div>
+      <button type="button" class="add-btn" id="addScheduleBtn">+ Add payment milestone</button>
     </fieldset>
 
     <fieldset>
-      <legend>Notes</legend>
-      <div id="notesContainer"></div>
-      <button type="button" class="add-btn" id="addNoteBtn">+ Add note</button>
+      <legend>Terms & Conditions</legend>
+      <div id="termsContainer"></div>
+      <button type="button" class="add-btn" id="addTermBtn">+ Add term</button>
     </fieldset>
 
     <fieldset>
@@ -120,7 +104,7 @@
   </div>
 
   <div class="preview-panel">
-    <div class="doc-sheet" id="invoice-sheet">
+    <div class="doc-sheet" id="quote-sheet">
       <div class="doc-header">
         <div>
           <img src="../../assets/logo.png" alt="ChendAwan">
@@ -128,7 +112,7 @@
           <div class="doc-brand-tag" id="pv-companyTag"></div>
         </div>
         <div class="doc-title">
-          <div class="big">INVOICE</div>
+          <div class="big">QUOTATION</div>
           <div class="small" id="pv-companyShort"></div>
         </div>
       </div>
@@ -142,15 +126,16 @@
           <div class="line" id="pv-clientAddr"></div>
         </div>
         <div class="meta-right">
-          <div><span class="lab">Invoice No. </span><span class="val" id="pv-invNo"></span></div>
-          <div><span class="lab">Invoice Date </span><span class="val" id="pv-invDate"></span></div>
-          <div><span class="lab">Payment Due </span><span class="val" id="pv-invDue"></span></div>
-          <div><span class="lab">Reference Quotation </span><span class="val" id="pv-invQuote"></span></div>
+          <div><span class="lab">Quotation No. </span><span class="val" id="pv-quoteNo"></span></div>
+          <div><span class="lab">Date </span><span class="val" id="pv-quoteDate"></span></div>
+          <div><span class="lab">Valid Until </span><span class="val" id="pv-quoteValid"></span></div>
         </div>
       </div>
 
       <div class="proj-line"><span class="lab">Project: </span><span id="pv-projName"></span></div>
-      <div class="proj-line"><span class="lab">Billing Stage: </span><span id="pv-projStage"></span></div>
+
+      <div class="section-heading">Project Summary</div>
+      <div class="section-body" id="pv-projSummary">&nbsp;</div>
 
       <table class="items">
         <thead>
@@ -163,27 +148,18 @@
         </thead>
         <tbody id="pv-itemsBody"></tbody>
         <tbody>
-          <tr class="totals-row"><td colspan="2"></td><td class="lab">Subtotal</td><td class="val" id="pv-subtotal">RM 0.00</td></tr>
-          <tr class="totals-row"><td colspan="2"></td><td class="lab" id="pv-sstLabel">SST (0%)</td><td class="val" id="pv-sstVal">RM 0.00</td></tr>
-          <tr class="totals-row total-due-row"><td colspan="2"></td><td class="lab">TOTAL DUE</td><td class="val" id="pv-total">RM 0.00</td></tr>
+          <tr class="totals-row total-due-row"><td colspan="2"></td><td class="lab">TOTAL ESTIMATE</td><td class="val" id="pv-total">RM 0.00</td></tr>
         </tbody>
       </table>
 
-      <div class="section-heading">Payment Schedule Reference</div>
-      <div class="section-body" id="pv-scheduleNote">&nbsp;</div>
+      <div class="section-heading">Additional Charges & Scope Limitations</div>
+      <ul class="notes-list" id="pv-extrasList"></ul>
 
-      <div class="section-heading">Payment Details</div>
-      <table class="bank-table">
-        <tr><td class="lab">Account Name:</td><td class="val" id="pv-bankAccName"></td></tr>
-        <tr><td class="lab">Bank Name:</td><td class="val" id="pv-bankName"></td></tr>
-        <tr><td class="lab">Account Number:</td><td class="val" id="pv-bankAccNo"></td></tr>
-        <tr><td class="lab">Payment Method:</td><td class="val" id="pv-bankMethod"></td></tr>
-        <tr><td class="lab">Payment Reference:</td><td class="val" id="pv-invNo2"></td></tr>
-      </table>
-      <div class="footnote" id="pv-payFootnote"></div>
+      <div class="section-heading">Payment Schedule</div>
+      <ul class="notes-list" id="pv-scheduleList"></ul>
 
-      <div class="section-heading">Notes</div>
-      <ul class="notes-list" id="pv-notesList"></ul>
+      <div class="section-heading">Terms & Conditions</div>
+      <ul class="notes-list" id="pv-termsList"></ul>
 
       <div class="sig-block">
         <div class="thanks">Thank you for your business.</div>
@@ -199,6 +175,6 @@
 <script src="../../js/company-defaults.js"></script>
 <script src="../../js/service-codes.js"></script>
 <script src="../../js/doc-common.js"></script>
-<script src="js/invoice.js"></script>
+<script src="js/quotation.js"></script>
 </body>
 </html>

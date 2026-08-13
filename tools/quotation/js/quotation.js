@@ -1,9 +1,11 @@
-const STORAGE_KEY = 'chendawan_invoice_draft_v2';
+const STORAGE_KEY = 'chendawan_quotation_draft_v1';
 const D = window.TCVDoc;
 const COMPANY = window.TCV_COMPANY || {};
 
 let itemCount = 0;
-let noteCount = 0;
+let extraCount = 0;
+let scheduleCount = 0;
+let termCount = 0;
 
 function makeItemBlock(id, data) {
   data = data || {};
@@ -15,11 +17,11 @@ function makeItemBlock(id, data) {
     <label class="first">Service code</label>
     <select class="it-code">${window.tcvServiceOptionsHtml(data.code || '')}</select>
     <label>Description</label>
-    <input type="text" class="it-desc" value="${data.desc || ''}" placeholder="e.g. Phase A: Comprehensive Development">
+    <input type="text" class="it-desc" value="${data.desc || ''}" placeholder="e.g. Phase / Deliverable Name">
     <label>Sub-description</label>
-    <textarea class="it-sub" placeholder="brief detail of the work covered">${data.sub || ''}</textarea>
+    <textarea class="it-sub" placeholder="brief description of what this phase / item covers">${data.sub || ''}</textarea>
     <div class="row3">
-      <div><label>Qty label</label><input type="text" class="it-qty" value="${data.qty || '1'}" placeholder="1 Module"></div>
+      <div><label>Qty label</label><input type="text" class="it-qty" value="${data.qty || '1'}" placeholder="1"></div>
       <div><label>Unit price (RM)</label><input type="number" class="it-price" value="${data.price != null ? data.price : ''}" step="0.01" placeholder="0.00"></div>
       <div><label>Amount (RM)</label><input type="number" class="it-amount" value="${data.amount != null ? data.amount : ''}" step="0.01" placeholder="0.00"></div>
     </div>
@@ -32,11 +34,6 @@ function addItem(data) {
   const id = 'item' + itemCount;
   const block = makeItemBlock(id, data);
   document.getElementById('itemsContainer').appendChild(block);
-  attachItemListeners(block);
-  renderPreview();
-}
-
-function attachItemListeners(block) {
   const codeSel = block.querySelector('.it-code');
   const descInput = block.querySelector('.it-desc');
   codeSel.addEventListener('change', () => {
@@ -44,37 +41,58 @@ function attachItemListeners(block) {
     if (svc && !descInput.value.trim()) descInput.value = svc.name;
     renderPreview();
   });
-  block.querySelectorAll('input,textarea,select').forEach((el) => {
-    el.addEventListener('input', renderPreview);
-  });
+  block.querySelectorAll('input,textarea,select').forEach((el) => el.addEventListener('input', renderPreview));
   block.querySelector('[data-remove]').addEventListener('click', () => {
     block.remove();
     renderPreview();
   });
+  renderPreview();
 }
 
-function makeNoteRow(id, text) {
+function makeTextRow(className, textClass, placeholder, text) {
   const div = document.createElement('div');
   div.className = 'note-item';
-  div.dataset.id = id;
   div.innerHTML = `
-    <textarea class="note-text" placeholder="Add a note...">${text || ''}</textarea>
-    <button type="button" data-remove="${id}" title="Remove">&times;</button>
+    <textarea class="${textClass}" placeholder="${placeholder}">${text || ''}</textarea>
+    <button type="button" title="Remove">&times;</button>
   `;
   return div;
 }
 
-function addNote(text) {
-  noteCount++;
-  const id = 'note' + noteCount;
-  const row = makeNoteRow(id, text);
-  document.getElementById('notesContainer').appendChild(row);
+function addDynamicRow(containerId, className, placeholder, text, counterName) {
+  if (counterName === 'extra') extraCount++;
+  if (counterName === 'schedule') scheduleCount++;
+  if (counterName === 'term') termCount++;
+  const row = makeTextRow('note-item', className, placeholder, text);
+  document.getElementById(containerId).appendChild(row);
   row.querySelector('textarea').addEventListener('input', renderPreview);
-  row.querySelector('[data-remove]').addEventListener('click', () => {
+  row.querySelector('button').addEventListener('click', () => {
     row.remove();
     renderPreview();
   });
   renderPreview();
+}
+
+function collectTexts(selector) {
+  return Array.from(document.querySelectorAll(selector)).map((t) => t.value);
+}
+
+function fillList(listId, texts) {
+  const list = document.getElementById(listId);
+  list.innerHTML = '';
+  texts.forEach((text) => {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
+    const li = document.createElement('li');
+    li.textContent = trimmed;
+    list.appendChild(li);
+  });
+  if (!list.children.length) {
+    const li = document.createElement('li');
+    li.className = 'empty-ph';
+    li.textContent = '—';
+    list.appendChild(li);
+  }
 }
 
 function renderPreview() {
@@ -90,24 +108,11 @@ function renderPreview() {
   g('pv-clientAttn').textContent = val('clientAttn');
   g('pv-clientAddr').textContent = val('clientAddr');
 
-  g('pv-invNo').textContent = val('invNo') || '—';
-  g('pv-invNo2').textContent = val('invNo') || '—';
-  g('pv-invDate').textContent = D.formatDate(val('invDate')) || '—';
-  g('pv-invDue').textContent = val('invDue') || '—';
-  g('pv-invQuote').textContent = val('invQuote') || '—';
-
+  g('pv-quoteNo').textContent = val('quoteNo') || '—';
+  g('pv-quoteDate').textContent = D.formatDate(val('quoteDate')) || '—';
+  g('pv-quoteValid').textContent = D.formatDate(val('quoteValid')) || '—';
   g('pv-projName').textContent = val('projName') || '—';
-  g('pv-projStage').textContent = val('projStage') || '—';
-  g('pv-scheduleNote').textContent = val('scheduleNote') || '—';
-
-  g('pv-bankAccName').textContent = val('bankAccName') || '—';
-  g('pv-bankName').textContent = val('bankName') || '—';
-  g('pv-bankAccNo').textContent = val('bankAccNo') || '—';
-  g('pv-bankMethod').textContent = val('bankMethod') || '—';
-  g('pv-payFootnote').textContent =
-    'Please use the Invoice No. as the payment reference and email proof of payment to ' +
-    (COMPANY.email || 'iqbal.chendawan@gmail.com') +
-    '.';
+  g('pv-projSummary').textContent = val('projSummary') || '—';
 
   g('pv-prepName').textContent = val('prepName') || '—';
   g('pv-prepTitle').textContent = val('prepTitle') || '';
@@ -116,8 +121,8 @@ function renderPreview() {
 
   const body = g('pv-itemsBody');
   body.innerHTML = '';
-  let subtotal = 0;
-  document.querySelectorAll('.item-block').forEach((block) => {
+  let total = 0;
+  document.querySelectorAll('#itemsContainer .item-block').forEach((block) => {
     const code = block.querySelector('.it-code').value;
     const svc = window.tcvFindService(code);
     const desc = block.querySelector('.it-desc').value.trim();
@@ -126,7 +131,7 @@ function renderPreview() {
     const price = parseFloat(block.querySelector('.it-price').value) || 0;
     let amount = parseFloat(block.querySelector('.it-amount').value);
     if (isNaN(amount)) amount = 0;
-    subtotal += amount;
+    total += amount;
     const codeLine = code ? `<div class="item-code">${code}${svc ? ' — ' + svc.name : ''}</div>` : '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -137,30 +142,16 @@ function renderPreview() {
     `;
     body.appendChild(tr);
   });
-
-  const sstPct = parseFloat(g('sstPct').value) || 0;
-  const sstVal = subtotal * (sstPct / 100);
-  const total = subtotal + sstVal;
-  g('pv-subtotal').textContent = 'RM ' + D.fmt(subtotal);
-  g('pv-sstLabel').textContent = 'SST (' + sstPct + '%)';
-  g('pv-sstVal').textContent = 'RM ' + D.fmt(sstVal);
   g('pv-total').textContent = 'RM ' + D.fmt(total);
 
-  const notesList = g('pv-notesList');
-  notesList.innerHTML = '';
-  document.querySelectorAll('.note-text').forEach((t) => {
-    const text = t.value.trim();
-    if (text) {
-      const li = document.createElement('li');
-      li.textContent = text;
-      notesList.appendChild(li);
-    }
-  });
+  fillList('pv-extrasList', collectTexts('.extra-text'));
+  fillList('pv-scheduleList', collectTexts('.schedule-text'));
+  fillList('pv-termsList', collectTexts('.term-text'));
 }
 
 function collectState() {
   const items = [];
-  document.querySelectorAll('.item-block').forEach((block) => {
+  document.querySelectorAll('#itemsContainer .item-block').forEach((block) => {
     items.push({
       code: block.querySelector('.it-code').value,
       desc: block.querySelector('.it-desc').value,
@@ -170,25 +161,15 @@ function collectState() {
       amount: block.querySelector('.it-amount').value,
     });
   });
-  const notes = [];
-  document.querySelectorAll('.note-text').forEach((t) => notes.push(t.value));
-
   const fieldIds = [
     'clientName',
     'clientAttn',
     'clientAddr',
-    'invNo',
-    'invDate',
-    'invDue',
-    'invQuote',
+    'quoteNo',
+    'quoteDate',
+    'quoteValid',
     'projName',
-    'projStage',
-    'sstPct',
-    'scheduleNote',
-    'bankAccName',
-    'bankName',
-    'bankAccNo',
-    'bankMethod',
+    'projSummary',
     'prepName',
     'prepTitle',
     'prepContact',
@@ -196,21 +177,34 @@ function collectState() {
   ];
   const fields = {};
   fieldIds.forEach((id) => (fields[id] = document.getElementById(id).value));
-  return { fields, items, notes };
+  return {
+    fields,
+    items,
+    extras: collectTexts('.extra-text'),
+    schedule: collectTexts('.schedule-text'),
+    terms: collectTexts('.term-text'),
+  };
 }
 
 function applyState(state) {
   document.getElementById('itemsContainer').innerHTML = '';
-  document.getElementById('notesContainer').innerHTML = '';
-  itemCount = 0;
-  noteCount = 0;
+  document.getElementById('extrasContainer').innerHTML = '';
+  document.getElementById('scheduleContainer').innerHTML = '';
+  document.getElementById('termsContainer').innerHTML = '';
+  itemCount = extraCount = scheduleCount = termCount = 0;
 
   Object.keys(state.fields || {}).forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = state.fields[id];
   });
   (state.items || []).forEach((it) => addItem(it));
-  (state.notes || []).forEach((n) => addNote(n));
+  (state.extras || []).forEach((t) =>
+    addDynamicRow('extrasContainer', 'extra-text', 'Item outside scope and how it will be billed', t, 'extra')
+  );
+  (state.schedule || []).forEach((t) =>
+    addDynamicRow('scheduleContainer', 'schedule-text', 'e.g. 20% Deposit: Upon project confirmation', t, 'schedule')
+  );
+  (state.terms || []).forEach((t) => addDynamicRow('termsContainer', 'term-text', 'Add a term...', t, 'term'));
   renderPreview();
 }
 
@@ -218,34 +212,42 @@ function defaultState() {
   const c = D.companyDefaults();
   return {
     fields: {
-      bankMethod: c.bankMethod,
       prepName: c.prepName,
       prepTitle: c.prepTitle,
       prepContact: c.prepContact,
       ssmNo: c.ssmNo,
-      sstPct: '0',
     },
     items: [{ code: '', desc: '', sub: '', qty: '1', price: '', amount: '' }],
-    notes: [
-      'This invoice is issued under the terms and conditions of the referenced quotation.',
-      'Please settle payment by the due date to keep the project on schedule.',
+    extras: [''],
+    schedule: [
+      '20% Deposit: Upon project confirmation and commencement.',
+      '40% Progress Payment: Upon deployment to staging / mid-project milestone.',
+      '40% Final Balance: Upon sign-off and delivery to production.',
+    ],
+    terms: [
+      'Changes in scope after sign-off will be billed separately as a new module.',
+      'The client shall provide feedback or sign-off within a reasonable number of working days.',
+      'Deliverables transfer to the client upon full payment.',
     ],
   };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   D.bindLivePreview(renderPreview);
-  D.bindDraftActions({
-    storageKey: STORAGE_KEY,
-    collectState,
-    applyState,
-    defaultState,
-  });
+  D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
   document.getElementById('addItemBtn').addEventListener('click', () => addItem());
-  document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
+  document.getElementById('addExtraBtn').addEventListener('click', () =>
+    addDynamicRow('extrasContainer', 'extra-text', 'Item outside scope and how it will be billed', '', 'extra')
+  );
+  document.getElementById('addScheduleBtn').addEventListener('click', () =>
+    addDynamicRow('scheduleContainer', 'schedule-text', 'e.g. 20% Deposit: Upon project confirmation', '', 'schedule')
+  );
+  document.getElementById('addTermBtn').addEventListener('click', () =>
+    addDynamicRow('termsContainer', 'term-text', 'Add a term...', '', 'term')
+  );
   document.getElementById('downloadBtn').addEventListener('click', () => {
-    const invNo = document.getElementById('invNo').value.trim() || 'invoice';
-    D.downloadPdf('invoice-sheet', D.safeFilename('Invoice', invNo));
+    const no = document.getElementById('quoteNo').value.trim() || 'quotation';
+    D.downloadPdf('quote-sheet', D.safeFilename('Quotation', no));
   });
   applyState(defaultState());
 });
