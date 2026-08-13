@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Master Service Agreement · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="../../css/legal-doc.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Master Service Agreement</span>
+    </div>
+    <h1>Master Service Agreement</h1>
+    <p class="sub">Fill the client and dates — the MSA terms are fixed. Download as PDF when ready.</p>
+
+    <fieldset>
+      <legend>Document Number</legend>
+      <label class="first">Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the service code, e.g. MSA/2026/001-WSD-100/01</p>
+      <div class="row2">
+        <div>
+          <label>Job no.</label>
+          <div class="inline-row">
+            <input type="number" id="jobNo" min="1" step="1">
+            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
+          </div>
+        </div>
+        <div>
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1">
+        </div>
+      </div>
+      <label>MSA no.</label>
+      <input type="text" id="docNo" readonly placeholder="Select a service code">
+      <p class="field-hint" id="docNoHint"></p>
+      <label>Related quotation (optional)</label>
+      <input type="text" id="relatedNo" placeholder="Paste QUO/2026/001-WSD-100/01 to auto-fill">
+    </fieldset>
+
+    <fieldset>
+      <legend>Client</legend>
+      <label class="first">Company name</label>
+      <input type="text" id="clientName" placeholder="e.g. HRSB Holdings Sdn Bhd">
+      <label>Principal place of business</label>
+      <input type="text" id="clientAddr" placeholder="Full address">
+    </fieldset>
+
+    <fieldset>
+      <legend>Dates</legend>
+      <label class="first">Effective date</label>
+      <input type="date" id="effDate">
+      <label>Signature date</label>
+      <input type="date" id="signDate">
+    </fieldset>
+
+    <fieldset>
+      <legend>Client Signatory</legend>
+      <label class="first">Name</label>
+      <input type="text" id="clientSignName">
+      <label>Title</label>
+      <input type="text" id="clientSignTitle" placeholder="e.g. Director">
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary-btn" id="downloadBtn">Download PDF</button>
+      <div class="save-row">
+        <button id="saveDraftBtn">Save draft</button>
+        <button id="loadDraftBtn">Load draft</button>
+        <button id="resetBtn">Reset form</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Drafts are saved on this device only. "Download PDF" renders the preview exactly as shown.</p>
+    </div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="doc-sheet" id="msa-sheet">
+      <div class="doc-header">
+        <div>
+          <img src="../../assets/logo.png" alt="ChendAwan">
+          <div class="doc-brand-name" id="pv-companyName"></div>
+          <div class="doc-brand-tag" id="pv-companyTag"></div>
+        </div>
+        <div class="doc-title">
+          <div class="big">MSA</div>
+          <div class="small" id="pv-companyShort"></div>
+        </div>
+      </div>
+      <hr class="rule">
+      <div class="doc-title" style="text-align:left;margin-bottom:10px;">
+        <div class="big" style="font-size:22px;">MASTER SERVICE AGREEMENT</div>
+      </div>
+      <div class="doc-ref">
+        <span class="lab">Document No. </span><strong data-bind="docNo" data-ph="—">—</strong>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <span class="lab">Effective Date </span><strong data-bind="effDate" data-format="date" data-ph="—">—</strong>
+      </div>
+      <p class="legal-intro">This Master Service Agreement (“Agreement”) is made on <strong data-bind="effDate" data-format="date" data-ph="[Date]">[Date]</strong> (“Effective Date”).</p>
+
+      <div class="party-block">
+        <div class="eyebrow">SERVICE PROVIDER</div>
+        <div class="name">TEAM CHENDAWAN VENTURES</div>
+        <div class="line">Registration No. 202603212164 (003878769-W)</div>
+        <div class="line">A sole proprietorship duly registered in Malaysia, having its principal place of business at No. 22, Jalan Sutera 4/5, Taman Puteri, 86000 Kluang, Johor, Malaysia.</div>
+      </div>
+      <div class="party-block">
+        <div class="eyebrow">CLIENT</div>
+        <div class="name" data-bind="clientName" data-ph="[Client Company Name]">[Client Company Name]</div>
+        <div class="line">Having its principal place of business at <span data-bind="clientAddr" data-ph="[Client Address]">[Client Address]</span>.</div>
+      </div>
+      <p class="legal-intro">The Service Provider and the Client are collectively referred to as the “Parties” and individually as a “Party”.</p>
+
+      <div class="legal-clause"><h2>1. Purpose</h2>
+        <p>This Agreement sets out the general legal and commercial terms governing the provision of information technology consultancy, software development, web portal development, cybersecurity consulting, vulnerability assessment and penetration testing, Internet of Things system architecture and development, database management, maintenance, and technical project management services by the Service Provider to the Client.</p>
+        <p>Specific services, deliverables, timelines, and fees shall be set out in one or more Statements of Work, quotations, proposals, or work orders issued under this Agreement.</p>
+      </div>
+      <div class="legal-clause"><h2>2. Definitions</h2>
+        <p>In this Agreement, unless the context otherwise requires:</p>
+        <p>“Statement of Work” or “SOW” means a written document signed or accepted by the Parties describing specific services, deliverables, timelines, and fees.</p>
+        <p>“Deliverables” means the outputs, reports, configurations, code, documentation, or other items to be provided by the Service Provider under an SOW.</p>
+        <p>“Background IP” means all intellectual property, materials, tools, methods, templates, libraries, frameworks, know-how, and pre-existing works owned or developed by a Party before or outside the scope of an SOW.</p>
+        <p>“Project IP” means intellectual property specifically created by the Service Provider for the Client under an SOW, excluding Background IP and third-party materials.</p>
+        <p>“Confidential Information” means all non-public information disclosed by one Party to the other in connection with this Agreement or any SOW.</p>
+      </div>
+      <div class="legal-clause"><h2>3. Statements of Work</h2>
+        <p>3.1 The Parties shall agree the scope of each project through an SOW, quotation, proposal, or work order.</p>
+        <p>3.2 Each SOW shall, at minimum, identify the services, milestones, fees, payment schedule, assumptions, and any special terms applicable to the project.</p>
+        <p>3.3 In the event of inconsistency, the following order of precedence shall apply unless expressly stated otherwise: this Agreement; the applicable SOW; the quotation or proposal; and any other supporting document.</p>
+      </div>
+      <div class="legal-clause"><h2>4. Service Standards</h2>
+        <p>4.1 The Service Provider shall perform the services with reasonable care, skill, and diligence and in accordance with generally accepted industry standards.</p>
+        <p>4.2 Any service levels, response times, uptime commitments, or maintenance windows shall only apply if expressly stated in an applicable SLA or SOW.</p>
+        <p>4.3 The Service Provider may rely on information, instructions, approvals, and materials supplied by the Client.</p>
+      </div>
+      <div class="legal-clause"><h2>5. Fees and Payment</h2>
+        <p>5.1 The Client shall pay the fees set out in the applicable SOW or quotation.</p>
+        <p>5.2 Unless otherwise stated in writing, the Client shall pay:</p>
+        <ul>
+          <li>a 40% deposit upon acceptance of the SOW or quotation and before commencement of work;</li>
+          <li>a 30% progress payment upon milestone, beta delivery, or completion of the primary audit phase, as applicable; and</li>
+          <li>the remaining 30% upon final delivery and Client acceptance.</li>
+        </ul>
+        <p>5.3 All invoices shall be payable within 14 days from the invoice date unless otherwise agreed in writing.</p>
+        <p>5.4 Any overdue amount may incur late payment charges at 1.5% per month, or the maximum rate permitted by law, whichever is lower.</p>
+        <p>5.5 The Service Provider may suspend performance of the services if any undisputed invoice remains unpaid after the due date.</p>
+        <p>5.6 All amounts are exclusive of taxes, duties, and government levies unless expressly stated otherwise.</p>
+      </div>
+      <div class="legal-clause"><h2>6. Change Control</h2>
+        <p>6.1 Any change to the scope, timeline, deliverables, or assumptions of an SOW shall be handled through a written change request or revised SOW.</p>
+        <p>6.2 The Service Provider shall have no obligation to proceed with a change until the Parties have agreed in writing to the revised scope and fees.</p>
+        <p>6.3 Where a change is requested by the Client, the Service Provider may adjust timelines and fees accordingly.</p>
+      </div>
+      <div class="legal-clause"><h2>7. Client Obligations</h2>
+        <p>The Client shall:</p>
+        <ul>
+          <li>provide timely access to information, systems, credentials, approvals, and personnel reasonably required for the performance of the services;</li>
+          <li>ensure that all information and materials supplied to the Service Provider are accurate, lawful, and owned or licensed appropriately;</li>
+          <li>review and respond to deliverables within a reasonable time; and</li>
+          <li>obtain any consents or permissions required for the Service Provider to perform the services.</li>
+        </ul>
+        <p>Any delay caused by the Client shall extend the relevant timelines.</p>
+      </div>
+      <div class="legal-clause"><h2>8. Intellectual Property</h2>
+        <p>8.1 Each Party retains all rights in its Background IP.</p>
+        <p>8.2 Upon full payment of all fees due under the relevant SOW, the Service Provider assigns to the Client all Project IP created specifically for the Client under that SOW, to the extent such rights are capable of assignment by law.</p>
+        <p>8.3 The Service Provider retains the right to use its Background IP, reusable code, methods, know-how, tools, templates, and generic components in other projects.</p>
+        <p>8.4 To the extent any Background IP or third-party materials are incorporated into the Deliverables, the Service Provider grants the Client a non-exclusive, non-transferable licence to use those materials solely as necessary to use the Deliverables for the Client’s internal business purposes, subject to any third-party licence terms.</p>
+        <p>8.5 The Client shall not remove proprietary notices or claim ownership of the Service Provider’s Background IP.</p>
+      </div>
+      <div class="legal-clause"><h2>9. Confidentiality</h2>
+        <p>9.1 Each Party shall keep confidential all Confidential Information received from the other Party and shall use it only for the purposes of this Agreement and the relevant SOW.</p>
+        <p>9.2 The Receiving Party shall not disclose Confidential Information except to its employees, contractors, or advisers who need to know it and who are bound by confidentiality obligations no less strict than those in this Agreement.</p>
+        <p>9.3 This clause shall survive termination of this Agreement.</p>
+      </div>
+      <div class="legal-clause"><h2>10. Data Protection and Security</h2>
+        <p>10.1 Each Party shall comply with applicable Malaysian laws relating to data protection and information security in respect of any personal data or sensitive information handled under this Agreement.</p>
+        <p>10.2 The Client acknowledges that cybersecurity work may involve access to sensitive systems, logs, reports, and vulnerabilities, and the Client shall not disclose such materials to third parties except as required for legal, insurance, audit, or incident response purposes.</p>
+      </div>
+      <div class="legal-clause"><h2>11. Warranties</h2>
+        <p>11.1 The Service Provider warrants that it will perform the services with reasonable care and skill.</p>
+        <p>11.2 Except as expressly stated in this Agreement, all other warranties, conditions, and representations are excluded to the fullest extent permitted by law.</p>
+        <p>11.3 The Client warrants that it has the authority to enter into this Agreement and that its instructions will not infringe any applicable law or third-party right.</p>
+      </div>
+      <div class="legal-clause"><h2>12. Limitation of Liability</h2>
+        <p>12.1 To the fullest extent permitted by law, the Service Provider shall not be liable for any indirect, incidental, special, punitive, or consequential losses or damages, including loss of profit, revenue, goodwill, opportunity, business, or data.</p>
+        <p>12.2 The Service Provider’s total aggregate liability arising out of or in connection with any SOW, claim, or series of related claims shall not exceed the total fees paid by the Client under the relevant SOW giving rise to the claim.</p>
+        <p>12.3 Nothing in this Agreement excludes liability that cannot legally be excluded or limited.</p>
+      </div>
+      <div class="legal-clause"><h2>13. Indemnity</h2>
+        <p>The Client shall indemnify and hold harmless the Service Provider from losses, damages, claims, liabilities, and expenses arising from:</p>
+        <ul>
+          <li>materials, content, or instructions supplied by the Client;</li>
+          <li>the Client’s misuse of the Deliverables;</li>
+          <li>the Client’s breach of this Agreement; or</li>
+          <li>the Client’s violation of any applicable law or third-party rights.</li>
+        </ul>
+      </div>
+      <div class="legal-clause"><h2>14. Suspension and Termination</h2>
+        <p>14.1 Either Party may terminate this Agreement or any SOW in accordance with the termination rights stated in the relevant SOW or upon written notice if the other Party commits a material breach and fails to remedy it within a reasonable time after notice.</p>
+        <p>14.2 The Service Provider may suspend services immediately if the Client fails to pay any undisputed amount by the due date or where continued work would create security, legal, or operational risk.</p>
+        <p>14.3 Upon termination, the Client shall pay all accrued fees for work performed up to the effective termination date.</p>
+      </div>
+      <div class="legal-clause"><h2>15. Force Majeure</h2>
+        <p>Neither Party shall be liable for delay or failure in performance caused by events beyond its reasonable control, including natural disasters, fire, flood, war, civil unrest, strikes, government action, or failures of third-party networks or infrastructure.</p>
+      </div>
+      <div class="legal-clause"><h2>16. Independent Contractor</h2>
+        <p>The Service Provider acts as an independent contractor. Nothing in this Agreement creates a partnership, joint venture, employment relationship, or agency relationship between the Parties.</p>
+      </div>
+      <div class="legal-clause"><h2>17. Governing Law and Jurisdiction</h2>
+        <p>This Agreement shall be governed by and construed in accordance with the laws of Malaysia. The Parties irrevocably submit to the exclusive jurisdiction of the courts of Malaysia.</p>
+      </div>
+      <div class="legal-clause"><h2>18. Entire Agreement</h2>
+        <p>This Agreement, together with any SOWs, quotations, and proposals expressly incorporated by reference, constitutes the entire agreement between the Parties with respect to its subject matter and supersedes all prior discussions or understandings.</p>
+      </div>
+      <div class="legal-clause"><h2>19. Amendment</h2>
+        <p>No amendment, modification, or variation of this Agreement shall be effective unless made in writing and signed by both Parties.</p>
+      </div>
+      <div class="legal-clause"><h2>20. Severability</h2>
+        <p>If any provision of this Agreement is held to be invalid, unlawful, or unenforceable, the remaining provisions shall continue in full force and effect.</p>
+      </div>
+      <div class="legal-clause"><h2>21. Notices</h2>
+        <p>Any notice under this Agreement shall be in writing and delivered to the contact details stated in the applicable SOW, quotation, proposal, or such other address as a Party may notify in writing.</p>
+      </div>
+      <div class="legal-clause"><h2>22. Execution</h2>
+        <p>This Agreement may be executed in counterparts, each of which shall be deemed an original and all of which together shall constitute one instrument.</p>
+        <p>IN WITNESS WHEREOF, the Parties have executed this Agreement on the date first written above.</p>
+      </div>
+
+      <div class="sig-grid">
+        <div class="sig-card">
+          <div class="sig-label">For and on behalf of Team ChendAwan Ventures</div>
+          <div class="row">Name: MUHAMMAD SAIFUL IQBAL BIN ABDUL RANI</div>
+          <div class="row">Title: Owner / Sole Proprietor</div>
+          <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
+          <div class="sig-line">Signature</div>
+        </div>
+        <div class="sig-card">
+          <div class="sig-label">For and on behalf of <span data-bind="clientName" data-ph="[Client Company Name]">[Client Company Name]</span></div>
+          <div class="row">Name: <span data-bind="clientSignName" data-ph="[Signatory Name]">[Signatory Name]</span></div>
+          <div class="row">Title: <span data-bind="clientSignTitle" data-ph="[Title]">[Title]</span></div>
+          <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
+          <div class="sig-line">Signature</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/service-codes.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
+<script src="../../js/legal-common.js"></script>
+<script src="js/msa.js"></script>
+</body>
+</html>

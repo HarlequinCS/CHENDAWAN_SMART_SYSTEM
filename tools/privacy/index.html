@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="../../css/legal-doc.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Privacy Policy</span>
+    </div>
+    <h1>Privacy Policy</h1>
+    <p class="sub">Set the effective date and document number, then download the PDPA policy as PDF.</p>
+
+    <fieldset>
+      <legend>Document Number</legend>
+      <label class="first">Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the service code, e.g. POL/2026/001-ITC-500/01</p>
+      <div class="row2">
+        <div>
+          <label>Job no.</label>
+          <div class="inline-row">
+            <input type="number" id="jobNo" min="1" step="1">
+            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
+          </div>
+        </div>
+        <div>
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1">
+        </div>
+      </div>
+      <label>Policy no.</label>
+      <input type="text" id="docNo" readonly placeholder="Select a service code">
+      <p class="field-hint" id="docNoHint"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Policy Date</legend>
+      <label class="first">Effective date</label>
+      <input type="date" id="effDate">
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary-btn" id="downloadBtn">Download PDF</button>
+      <div class="save-row">
+        <button id="saveDraftBtn">Save draft</button>
+        <button id="loadDraftBtn">Load draft</button>
+        <button id="resetBtn">Reset form</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Drafts are saved on this device only. "Download PDF" renders the preview exactly as shown.</p>
+    </div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="doc-sheet" id="privacy-sheet">
+      <div class="doc-header">
+        <div>
+          <img src="../../assets/logo.png" alt="ChendAwan">
+          <div class="doc-brand-name" id="pv-companyName"></div>
+          <div class="doc-brand-tag" id="pv-companyTag"></div>
+        </div>
+        <div class="doc-title">
+          <div class="big">POLICY</div>
+          <div class="small" id="pv-companyShort"></div>
+        </div>
+      </div>
+      <hr class="rule">
+      <div class="doc-title" style="text-align:left;margin-bottom:10px;">
+        <div class="big" style="font-size:22px;">PRIVACY POLICY</div>
+      </div>
+      <div class="doc-ref">
+        <span class="lab">Document No. </span><strong data-bind="docNo" data-ph="—">—</strong>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <span class="lab">Effective Date </span><strong data-bind="effDate" data-format="date" data-ph="—">—</strong>
+      </div>
+
+      <p class="legal-intro">TEAM CHENDAWAN VENTURES (“we”, “us”, or “our”) respects your privacy and is committed to protecting your personal data in accordance with the Personal Data Protection Act 2010 of Malaysia (“PDPA”). This Privacy Policy explains how we collect, use, disclose, store, and protect personal data when you engage our services, visit our website, contact us, or otherwise interact with us.</p>
+
+      <div class="legal-clause"><h2>1. Personal Data We Collect</h2>
+        <p>We may collect personal data including, without limitation:</p>
+        <ul>
+          <li>your name;</li>
+          <li>email address;</li>
+          <li>telephone number;</li>
+          <li>company name and job title;</li>
+          <li>billing, invoicing, and payment details;</li>
+          <li>correspondence and communication records;</li>
+          <li>technical data such as IP address, device information, access logs, and system logs; and</li>
+          <li>any other information you voluntarily provide to us in connection with our services.</li>
+        </ul>
+        <p>Where applicable, we may also collect information relating to your use of our websites, web portals, software solutions, or cybersecurity and IT services.</p>
+      </div>
+      <div class="legal-clause"><h2>2. Purpose of Collection and Processing</h2>
+        <p>We collect and process personal data for the following purposes:</p>
+        <ul>
+          <li>to provide, manage, and deliver our IT consultancy, software development, web development, cybersecurity, and related technical services;</li>
+          <li>to communicate with you regarding projects, support requests, quotations, proposals, and service updates;</li>
+          <li>to issue invoices, receipts, quotations, and other administrative or financial documents;</li>
+          <li>to conduct security audits, monitoring, troubleshooting, maintenance, and system support where permitted by agreement;</li>
+          <li>to comply with legal, regulatory, contractual, and internal policy requirements; and</li>
+          <li>to improve our services, processes, security controls, and client experience.</li>
+        </ul>
+      </div>
+      <div class="legal-clause"><h2>3. Disclosure of Personal Data</h2>
+        <p>We do not sell or trade personal data. We may disclose personal data only where necessary for the purposes above, including to:</p>
+        <ul>
+          <li>employees, contractors, and advisers who need the information to perform their duties;</li>
+          <li>hosting providers, cloud service providers, payment processors, and other technology vendors engaged by us;</li>
+          <li>auditors, accountants, insurers, legal advisers, and professional consultants;</li>
+          <li>regulatory authorities, law enforcement agencies, or other parties where required or permitted by law; and</li>
+          <li>other third parties with your consent or as otherwise permitted under applicable law.</li>
+        </ul>
+      </div>
+      <div class="legal-clause"><h2>4. Data Security</h2>
+        <p>We implement reasonable administrative, physical, and technical safeguards designed to protect personal data against unauthorised access, disclosure, alteration, or destruction. These measures may include access controls, encryption, secure storage, and system monitoring.</p>
+        <p>However, no method of transmission over the Internet or method of electronic storage is completely secure, and we cannot guarantee absolute security.</p>
+      </div>
+      <div class="legal-clause"><h2>5. Retention of Personal Data</h2>
+        <p>We will retain personal data only for as long as necessary to fulfil the purposes for which it was collected, to comply with legal or regulatory requirements, or to protect our legitimate business interests where permitted by law. When personal data is no longer required, we will take reasonable steps to destroy or permanently delete it in accordance with applicable requirements.</p>
+      </div>
+      <div class="legal-clause"><h2>6. Access and Correction</h2>
+        <p>Subject to applicable law, you may request access to or correction of your personal data held by us. If you believe any personal data we hold about you is inaccurate, incomplete, or outdated, you may contact us using the details below and we will respond in accordance with applicable legal requirements.</p>
+      </div>
+      <div class="legal-clause"><h2>7. Provision of Personal Data</h2>
+        <p>Where personal data is required for us to provide services, process payments, issue documents, or comply with legal or contractual obligations, failure to provide such data may affect our ability to perform the requested services or enter into a contract with you.</p>
+      </div>
+      <div class="legal-clause"><h2>8. Cookies and Technical Logs</h2>
+        <p>Where applicable, our website or systems may use cookies, log files, analytics tools, and similar technologies to improve functionality, monitor performance, maintain security, and analyse usage trends. You may adjust your browser settings to limit cookies, but some features may not function properly as a result.</p>
+      </div>
+      <div class="legal-clause"><h2>9. Changes to This Policy</h2>
+        <p>We may update this Privacy Policy from time to time to reflect changes in our practices, legal requirements, or operational needs. The updated version will take effect on the date stated at the top of the policy when published or otherwise communicated to you.</p>
+      </div>
+      <div class="legal-clause"><h2>10. Contact Us</h2>
+        <p>If you have any questions, complaints, or requests regarding this Privacy Policy or the processing of your personal data, please contact:</p>
+        <p><strong>TEAM CHENDAWAN VENTURES</strong><br>
+        Email: iqbal.chendawan@gmail.com<br>
+        Phone: +60 14-720 7787<br>
+        Address: No. 22, Jalan Sutera 4/5, Taman Puteri, 86000 Kluang, Johor, Malaysia</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/service-codes.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
+<script src="../../js/legal-common.js"></script>
+<script src="js/privacy.js"></script>
+</body>
+</html>

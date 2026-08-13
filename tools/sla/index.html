@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Level Agreement · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="../../css/legal-doc.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Service Level Agreement</span>
+    </div>
+    <h1>Service Level Agreement</h1>
+    <p class="sub">Fill the client, project, and support details — SLA tables stay in the template. Download as PDF when ready.</p>
+
+    <fieldset>
+      <legend>Document Number</legend>
+      <label class="first">Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the service code, e.g. SLA/2026/001-WSD-100/01</p>
+      <div class="row2">
+        <div>
+          <label>Job no.</label>
+          <div class="inline-row">
+            <input type="number" id="jobNo" min="1" step="1">
+            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
+          </div>
+        </div>
+        <div>
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1">
+        </div>
+      </div>
+      <label>SLA no.</label>
+      <input type="text" id="docNo" readonly placeholder="Select a service code">
+      <p class="field-hint" id="docNoHint"></p>
+      <label>Related MSA / quotation (optional)</label>
+      <input type="text" id="relatedNo" placeholder="Paste MSA/2026/001-WSD-100/01 to auto-fill">
+    </fieldset>
+
+    <fieldset>
+      <legend>Client</legend>
+      <label class="first">Company name</label>
+      <input type="text" id="clientName">
+      <label>Principal place of business</label>
+      <input type="text" id="clientAddr">
+    </fieldset>
+
+    <fieldset>
+      <legend>Coverage</legend>
+      <label class="first">Project name</label>
+      <input type="text" id="projName" placeholder="Covered system / project">
+      <label>Business hours</label>
+      <input type="text" id="businessHours" placeholder="e.g. 9:00 a.m. to 6:00 p.m.">
+      <label>Incident reporting channel</label>
+      <input type="text" id="supportChannel" placeholder="email / WhatsApp / phone">
+    </fieldset>
+
+    <fieldset>
+      <legend>Dates</legend>
+      <label class="first">Effective date</label>
+      <input type="date" id="effDate">
+      <label>Signature date</label>
+      <input type="date" id="signDate">
+    </fieldset>
+
+    <fieldset>
+      <legend>Client Signatory</legend>
+      <label class="first">Name</label>
+      <input type="text" id="clientSignName">
+      <label>Title</label>
+      <input type="text" id="clientSignTitle">
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary-btn" id="downloadBtn">Download PDF</button>
+      <div class="save-row">
+        <button id="saveDraftBtn">Save draft</button>
+        <button id="loadDraftBtn">Load draft</button>
+        <button id="resetBtn">Reset form</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Drafts are saved on this device only. "Download PDF" renders the preview exactly as shown.</p>
+    </div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="doc-sheet" id="sla-sheet">
+      <div class="doc-header">
+        <div>
+          <img src="../../assets/logo.png" alt="ChendAwan">
+          <div class="doc-brand-name" id="pv-companyName"></div>
+          <div class="doc-brand-tag" id="pv-companyTag"></div>
+        </div>
+        <div class="doc-title">
+          <div class="big">SLA</div>
+          <div class="small" id="pv-companyShort"></div>
+        </div>
+      </div>
+      <hr class="rule">
+      <div class="doc-title" style="text-align:left;margin-bottom:10px;">
+        <div class="big" style="font-size:22px;">SERVICE LEVEL AGREEMENT</div>
+      </div>
+      <div class="doc-ref">
+        <span class="lab">Document No. </span><strong data-bind="docNo" data-ph="—">—</strong>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <span class="lab">Effective Date </span><strong data-bind="effDate" data-format="date" data-ph="—">—</strong>
+      </div>
+      <p class="legal-intro">This Service Level Agreement (“Agreement” or “SLA”) is made on <strong data-bind="effDate" data-format="date" data-ph="[Date]">[Date]</strong> (“Effective Date”).</p>
+
+      <div class="party-block">
+        <div class="eyebrow">SERVICE PROVIDER</div>
+        <div class="name">TEAM CHENDAWAN VENTURES</div>
+        <div class="line">Registration No. 202603212164 (003878769-W)</div>
+        <div class="line">A sole proprietorship duly registered in Malaysia, having its principal place of business at No. 22, Jalan Sutera 4/5, Taman Puteri, 86000 Kluang, Johor, Malaysia.</div>
+      </div>
+      <div class="party-block">
+        <div class="eyebrow">CLIENT</div>
+        <div class="name" data-bind="clientName" data-ph="[Client Company Name]">[Client Company Name]</div>
+        <div class="line">Having its principal place of business at <span data-bind="clientAddr" data-ph="[Client Address]">[Client Address]</span>.</div>
+      </div>
+      <p class="legal-intro">The Service Provider and the Client are collectively referred to as the “Parties” and individually as a “Party”.</p>
+
+      <div class="legal-clause"><h2>1. Purpose</h2>
+        <p>This Agreement sets out the service levels, support standards, response times, maintenance expectations, and related obligations applicable to the Service Provider’s provision of information technology consultancy and services, custom software development, cybersecurity services, maintenance, bug fixing, security patching, and server monitoring in respect of <strong data-bind="projName" data-ph="[Project Name]">[Project Name]</strong>, or such other services as may be agreed in writing by the Parties.</p>
+      </div>
+      <div class="legal-clause"><h2>2. Definitions</h2>
+        <p>For the purposes of this Agreement:</p>
+        <p>“Business Hours” means <strong data-bind="businessHours" data-ph="[insert hours]">[insert hours]</strong> Malaysia time, excluding weekends and public holidays in Malaysia.</p>
+        <p>“Business Day” means a day other than Saturday, Sunday, or a public holiday in Malaysia.</p>
+        <p>“Incident” means any unplanned interruption, defect, vulnerability, service degradation, or support issue affecting the services.</p>
+        <p>“Scheduled Maintenance” means planned maintenance notified in advance by the Service Provider.</p>
+        <p>“Uptime” means the percentage of time the hosted or managed service is available and functional during a calendar month, excluding permitted downtime under this Agreement.</p>
+      </div>
+      <div class="legal-clause"><h2>3. Scope of Services</h2>
+        <p>The Service Provider shall provide the following services, as applicable to the Project:</p>
+        <ul>
+          <li>maintenance and support;</li>
+          <li>bug fixing;</li>
+          <li>security patching;</li>
+          <li>server monitoring;</li>
+          <li>incident triage and remediation;</li>
+          <li>reasonable technical advice related to the supported system.</li>
+        </ul>
+        <p>Any work outside the agreed scope shall be subject to a separate written agreement or change request.</p>
+      </div>
+      <div class="legal-clause"><h2>4. Service Availability</h2>
+        <p>Subject to the exclusions in this Agreement, the Service Provider shall use reasonable commercial efforts to maintain 99.9% monthly uptime for web portals and IoT infrastructure hosted or directly managed by the Service Provider.</p>
+        <p>Uptime shall be measured on a monthly basis. Downtime caused by Scheduled Maintenance, client actions, force majeure, or third-party systems outside the Service Provider’s reasonable control shall not count as unavailability.</p>
+      </div>
+      <div class="legal-clause"><h2>5. Incident Priorities</h2>
+        <p>Incidents shall be classified as follows:</p>
+        <table class="severity-table">
+          <thead>
+            <tr>
+              <th>Severity Level</th>
+              <th>Description</th>
+              <th>Target Response</th>
+              <th>Target Resolution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Severity 1 (Critical)</td>
+              <td>System down, security breach, or critical vulnerability being exploited.</td>
+              <td>Within 1 hour</td>
+              <td>Within 4 hours</td>
+            </tr>
+            <tr>
+              <td>Severity 2 (High)</td>
+              <td>Major functionality impacted and no practical workaround exists.</td>
+              <td>Within 4 hours</td>
+              <td>Within 24 hours</td>
+            </tr>
+            <tr>
+              <td>Severity 3 (Normal)</td>
+              <td>Minor bugs, UI issues, or general support queries.</td>
+              <td>Within 24 hours</td>
+              <td>Within 3–5 Business Days</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Response time means the time from acknowledgment of the incident by the Service Provider. Resolution time means the time to provide a fix, workaround, or reasonable remediation plan.</p>
+      </div>
+      <div class="legal-clause"><h2>6. Support Procedure</h2>
+        <p>The Client shall report incidents via <strong data-bind="supportChannel" data-ph="[email / ticketing system / WhatsApp / phone]">[email / ticketing system / WhatsApp / phone]</strong>. The Client shall provide reasonable details, including screenshots, error messages, reproduction steps, and relevant logs where available.</p>
+        <p>The Service Provider may request additional information before commencing investigation. Any delay caused by incomplete or inaccurate information provided by the Client shall not count against the Service Provider’s target times.</p>
+      </div>
+      <div class="legal-clause"><h2>7. Scheduled Maintenance</h2>
+        <p>Scheduled Maintenance shall ordinarily be carried out during off-peak hours, typically between 12:00 a.m. and 4:00 a.m. MYT, unless otherwise agreed in writing.</p>
+        <p>The Service Provider shall give the Client at least 48 hours’ prior notice of any scheduled downtime expected to exceed 30 minutes, except where urgent maintenance is required to address a security risk, active failure, or legal compliance issue.</p>
+      </div>
+      <div class="legal-clause"><h2>8. Exclusions</h2>
+        <p>The Service Provider shall not be liable for failure to meet service levels where such failure results from:</p>
+        <ul>
+          <li>Scheduled Maintenance;</li>
+          <li>acts or omissions of the Client;</li>
+          <li>modifications not made or approved by the Service Provider;</li>
+          <li>internet, hosting, cloud, telecom, or third-party service failures outside the Service Provider’s reasonable control;</li>
+          <li>force majeure events;</li>
+          <li>misuse, unauthorized access, or interference by third parties not under the Service Provider’s control.</li>
+        </ul>
+      </div>
+      <div class="legal-clause"><h2>9. Service Credits</h2>
+        <p>If agreed by the Parties in writing, the Client may be entitled to service credits if monthly uptime falls below the agreed threshold. Any such credits, if applicable, shall be the Client’s sole and exclusive remedy for uptime failures, unless otherwise agreed in writing.</p>
+      </div>
+      <div class="legal-clause"><h2>10. Term and Termination</h2>
+        <p>This Agreement shall commence on the Effective Date and shall remain in force until terminated in accordance with the primary service agreement between the Parties or upon written notice by either Party, subject to any accrued rights and obligations.</p>
+      </div>
+      <div class="legal-clause"><h2>11. Confidentiality and Data Protection</h2>
+        <p>Each Party shall keep confidential any non-public information obtained in connection with this Agreement and shall comply with applicable Malaysian data protection and security requirements in relation to personal data or security-related information handled under this Agreement.</p>
+      </div>
+      <div class="legal-clause"><h2>12. Governing Law and Jurisdiction</h2>
+        <p>This Agreement shall be governed by and construed in accordance with the laws of Malaysia. The Parties irrevocably submit to the exclusive jurisdiction of the courts of Malaysia.</p>
+      </div>
+      <div class="legal-clause"><h2>13. Entire Agreement</h2>
+        <p>This Agreement, together with the primary service contract and any written appendices, constitutes the entire agreement between the Parties with respect to its subject matter and supersedes prior discussions or understandings on the same subject matter.</p>
+      </div>
+      <div class="legal-clause"><h2>14. Amendment</h2>
+        <p>No amendment, variation, or modification of this Agreement shall be effective unless made in writing and signed by both Parties.</p>
+      </div>
+      <div class="legal-clause"><h2>15. Execution</h2>
+        <p>IN WITNESS WHEREOF, the Parties have caused this Agreement to be executed by their duly authorized signatories on the date first written above.</p>
+      </div>
+
+      <div class="sig-grid">
+        <div class="sig-card">
+          <div class="sig-label">For and on behalf of Team ChendAwan Ventures</div>
+          <div class="row">Name: MUHAMMAD SAIFUL IQBAL BIN ABDUL RANI</div>
+          <div class="row">Title: Owner / Sole Proprietor</div>
+          <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
+          <div class="sig-line">Signature</div>
+        </div>
+        <div class="sig-card">
+          <div class="sig-label">For and on behalf of <span data-bind="clientName" data-ph="[Client Company Name]">[Client Company Name]</span></div>
+          <div class="row">Name: <span data-bind="clientSignName" data-ph="[Signatory Name]">[Signatory Name]</span></div>
+          <div class="row">Title: <span data-bind="clientSignTitle" data-ph="[Title]">[Title]</span></div>
+          <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
+          <div class="sig-line">Signature</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/service-codes.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
+<script src="../../js/legal-common.js"></script>
+<script src="js/sla.js"></script>
+</body>
+</html>

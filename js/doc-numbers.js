@@ -4,6 +4,10 @@
  * QUO/2026/001-WSD-100/01
  * INV/2026/001-WSD-100/01
  * RCP/2026/001-WSD-100/01
+ * NDA/2026/001-WSD-100/01
+ * MSA/2026/001-WSD-100/01
+ * SLA/2026/001-WSD-100/01
+ * POL/2026/001-ITC-500/01
  *
  * PREFIX / YEAR / JOB - SERVICE CODE [ - ISSUE ]
  * Issue is omitted when it is 1. A second invoice for the same job:
@@ -11,7 +15,15 @@
  */
 window.TCVNumbers = (function () {
   const SEQ_KEY = 'tcv_job_seq_v1';
-  const PREFIX = { quotation: 'QUO', invoice: 'INV', receipt: 'RCP' };
+  const PREFIX = {
+    quotation: 'QUO',
+    invoice: 'INV',
+    receipt: 'RCP',
+    nda: 'NDA',
+    msa: 'MSA',
+    sla: 'SLA',
+    privacy: 'POL',
+  };
 
   function pad(n, width) {
     return String(parseInt(n, 10) || 0).padStart(width || 3, '0');
@@ -72,7 +84,7 @@ window.TCVNumbers = (function () {
   function parse(str) {
     const s = (str || '').trim();
     if (!s) return null;
-    const long = /^(QUO|INV|RCP)\/(\d{4})\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
+    const long = /^(QUO|INV|RCP|NDA|MSA|SLA|POL)\/(\d{4})\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
     if (long) {
       return {
         prefix: long[1].toUpperCase(),
@@ -82,7 +94,7 @@ window.TCVNumbers = (function () {
         issue: parseInt(long[5], 10) || 1,
       };
     }
-    const short = /^(QUO|INV|RCP)\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
+    const short = /^(QUO|INV|RCP|NDA|MSA|SLA|POL)\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
     if (short) {
       return {
         prefix: short[1].toUpperCase(),

@@ -1,0 +1,23 @@
+window.TCVLegal.boot({
+  prefix: window.TCVNumbers.PREFIX.nda,
+  storageKey: 'chendawan_nda_draft_v1',
+  sheetId: 'nda-sheet',
+  filePrefix: 'NDA',
+  noId: 'docNo',
+  hintId: 'docNoHint',
+  relatedId: 'relatedNo',
+  fieldIds: [
+    'serviceCode',
+    'jobNo',
+    'issueNo',
+    'docNo',
+    'relatedNo',
+    'clientName',
+    'clientReg',
+    'clientAddr',
+    'effDate',
+    'signDate',
+    'clientSignName',
+    'clientSignTitle',
+  ],
+});
