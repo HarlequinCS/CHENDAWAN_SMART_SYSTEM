@@ -43,9 +43,14 @@
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         F.signIn(email, password).catch((e) => {
-          err.textContent = e && e.code === 'auth/invalid-credential'
-            ? 'Wrong email or password.'
-            : (e && e.message) || 'Could not sign in.';
+          const code = e && e.code;
+          if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+            err.textContent = 'Wrong email or password.';
+          } else if (code === 'auth/unauthorized-domain') {
+            err.textContent = 'This GitHub Pages domain is not allowed yet. In Firebase Console → Authentication → Settings → Authorized domains, add harlequincs.github.io';
+          } else {
+            err.textContent = (e && e.message) || 'Could not sign in.';
+          }
         });
       });
     });

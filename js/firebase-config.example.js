@@ -1,6 +1,6 @@
 /**
- * Copy this file to js/firebase-config.js and paste your Firebase web config.
- * js/firebase-config.js is gitignored.
+ * Firebase web config is public (security is Auth + Firestore rules + authorized domains).
+ * Keep a copy as firebase-config.js in the repo so GitHub Pages can sign in.
  */
 window.TCV_FIREBASE_CONFIG = {
   apiKey: 'YOUR_API_KEY',

@@ -48,7 +48,15 @@ window.TCVFirebase = (function () {
   }
 
   function requireAuth() {
-    init();
+    try {
+      init();
+    } catch (e) {
+      document.documentElement.classList.remove('auth-wait');
+      if ((window.location.pathname || '').indexOf('login.html') === -1) {
+        window.location.href = loginHref();
+      }
+      return Promise.reject(e);
+    }
     document.documentElement.classList.add('auth-wait');
     return new Promise((resolve, reject) => {
       const unsub = getAuth().onAuthStateChanged((user) => {

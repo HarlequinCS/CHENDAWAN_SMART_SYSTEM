@@ -45,16 +45,30 @@ function renderTools() {
   });
 }
 
+function applySession(user) {
+  const emailEl = document.getElementById('sessionEmail');
+  const out = document.getElementById('signOutBtn');
+  const inn = document.getElementById('signInLink');
+  if (emailEl) emailEl.textContent = user && user.email ? user.email : '';
+  if (out) {
+    out.hidden = !user;
+    if (user && !out.dataset.bound) {
+      out.dataset.bound = '1';
+      out.addEventListener('click', () => window.TCVFirebase.signOut());
+    }
+  }
+  if (inn) inn.hidden = !!user;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  applySession(null);
   const boot = window.TCVFirebase && window.TCVFirebase.ready
     ? window.TCVFirebase.ready
     : Promise.resolve();
   boot.then(() => {
-    const emailEl = document.getElementById('sessionEmail');
-    const user = window.TCVFirebase && window.TCVFirebase.currentUser();
-    if (emailEl && user) emailEl.textContent = user.email || '';
-    const out = document.getElementById('signOutBtn');
-    if (out) out.addEventListener('click', () => window.TCVFirebase.signOut());
+    applySession(window.TCVFirebase && window.TCVFirebase.currentUser());
     renderTools();
-  }).catch(() => {});
+  }).catch(() => {
+    applySession(null);
+  });
 });
