@@ -66,11 +66,39 @@ window.TCVDoc = (function () {
       btn.disabled = true;
       btn.textContent = 'Preparing PDF...';
     }
+    const panel = el.closest('.preview-panel');
+    const prevOverflow = panel ? panel.style.overflow : '';
+    const prevMax = panel ? panel.style.maxHeight : '';
+    const prevHeight = panel ? panel.style.height : '';
+    if (panel) {
+      panel.style.overflow = 'visible';
+      panel.style.maxHeight = 'none';
+      panel.style.height = 'auto';
+    }
+    const restore = () => {
+      if (panel) {
+        panel.style.overflow = prevOverflow;
+        panel.style.maxHeight = prevMax;
+        panel.style.height = prevHeight;
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = original || 'Download PDF';
+      }
+    };
     const opt = {
       margin: 0,
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
+      },
+      pagebreak: { mode: ['css', 'legacy'] },
       jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
     };
     html2pdf()
@@ -78,17 +106,11 @@ window.TCVDoc = (function () {
       .from(el)
       .save()
       .then(() => {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = original || 'Download PDF';
-        }
+        restore();
         setStatus('PDF downloaded.');
       })
       .catch(() => {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = original || 'Download PDF';
-        }
+        restore();
         setStatus('Something went wrong generating the PDF. Try again.');
       });
   }
@@ -147,6 +169,11 @@ window.TCVDoc = (function () {
         setStatus('No saved draft found.');
       }
     });
+
+    const printBtn = document.getElementById('printBtn');
+    if (printBtn) {
+      printBtn.addEventListener('click', () => window.print());
+    }
   }
 
   function amountInWords(n) {
