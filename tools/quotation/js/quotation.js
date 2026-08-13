@@ -110,10 +110,17 @@ function renderPreview() {
   g('pv-companyTag').textContent = COMPANY.tagline || '';
   g('pv-companyShort').textContent = COMPANY.shortName || '';
 
-  g('pv-clientName').textContent = val('clientName') || '[Client company name]';
+  g('pv-clientName').textContent = val('clientName') || '[Select a client]';
   g('pv-clientName').className = val('clientName') ? 'name' : 'name empty-ph';
   g('pv-clientAttn').textContent = val('clientAttn');
   g('pv-clientAddr').textContent = val('clientAddr');
+  if (g('pv-clientReg')) {
+    const reg = val('clientReg');
+    const type = val('clientType');
+    g('pv-clientReg').textContent = reg
+      ? (type === 'individual' ? 'NRIC No. ' : 'Registration No. ') + reg
+      : '';
+  }
 
   g('pv-quoteNo').textContent = val('quoteNo') || '—';
   g('pv-quoteDate').textContent = D.formatDate(val('quoteDate')) || '—';
@@ -169,9 +176,14 @@ function collectState() {
     });
   });
   const fieldIds = [
+    'clientId',
+    'projectId',
+    'docYear',
     'clientName',
     'clientAttn',
     'clientAddr',
+    'clientReg',
+    'clientType',
     'serviceCode',
     'jobNo',
     'issueNo',
@@ -207,6 +219,8 @@ function applyState(state) {
     const el = document.getElementById(id);
     if (el) el.value = state.fields[id];
   });
+  if (window.TCVClients) window.TCVClients.syncSelected();
+  if (window.TCVProjects) window.TCVProjects.syncSelected();
   (state.items || []).forEach((it) => addItem(it));
   (state.extras || []).forEach((t) =>
     addDynamicRow('extrasContainer', 'extra-text', 'Item outside scope and how it will be billed', t, 'extra')
@@ -253,33 +267,68 @@ function defaultState() {
 let numbering;
 
 document.addEventListener('DOMContentLoaded', () => {
-  D.bindLivePreview(renderPreview);
-  D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
-  numbering = window.TCVNumbers.bind({
-    prefix: window.TCVNumbers.PREFIX.quotation,
-    noId: 'quoteNo',
-    serviceId: 'serviceCode',
-    jobId: 'jobNo',
-    issueId: 'issueNo',
-    nextBtnId: 'nextJobBtn',
-    hintId: 'quoteNoHint',
-    onChange: renderPreview,
-  });
-  document.getElementById('addItemBtn').addEventListener('click', () => addItem());
-  document.getElementById('addExtraBtn').addEventListener('click', () =>
-    addDynamicRow('extrasContainer', 'extra-text', 'Item outside scope and how it will be billed', '', 'extra')
-  );
-  document.getElementById('addScheduleBtn').addEventListener('click', () =>
-    addDynamicRow('scheduleContainer', 'schedule-text', 'e.g. 20% Deposit: Upon project confirmation', '', 'schedule')
-  );
-  document.getElementById('addTermBtn').addEventListener('click', () =>
-    addDynamicRow('termsContainer', 'term-text', 'Add a term...', '', 'term')
-  );
-  document.getElementById('downloadBtn').addEventListener('click', () => {
-    if (numbering) numbering.commit();
-    const no = document.getElementById('quoteNo').value.trim() || 'quotation';
-    D.downloadPdf('quote-sheet', D.safeFilename('Quotation', no));
-  });
-  applyState(defaultState());
-  numbering.refresh();
+  const start = window.TCVFirebase && window.TCVFirebase.afterAuth
+    ? window.TCVFirebase.afterAuth()
+    : Promise.resolve();
+  start
+    .then(() => {
+      D.bindLivePreview(renderPreview);
+      if (window.TCVClients) {
+        window.TCVClients.bindPicker({
+          onChange: () => {
+            if (numbering) numbering.refresh();
+            else renderPreview();
+          },
+        });
+      }
+      D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
+      numbering = window.TCVNumbers.bind({
+        prefix: window.TCVNumbers.PREFIX.quotation,
+        noId: 'quoteNo',
+        serviceId: 'serviceCode',
+        jobId: 'jobNo',
+        issueId: 'issueNo',
+        nextBtnId: 'nextJobBtn',
+        hintId: 'quoteNoHint',
+        onChange: renderPreview,
+      });
+      if (window.TCVProjects) {
+        window.TCVProjects.bindPicker({
+          prefix: window.TCVNumbers.PREFIX.quotation,
+          onChange: () => {
+            if (numbering) numbering.refresh();
+            else renderPreview();
+          },
+        });
+      }
+      document.getElementById('addItemBtn').addEventListener('click', () => addItem());
+      document.getElementById('addExtraBtn').addEventListener('click', () =>
+        addDynamicRow('extrasContainer', 'extra-text', 'Item outside scope and how it will be billed', '', 'extra')
+      );
+      document.getElementById('addScheduleBtn').addEventListener('click', () =>
+        addDynamicRow('scheduleContainer', 'schedule-text', 'e.g. 20% Deposit: Upon project confirmation', '', 'schedule')
+      );
+      document.getElementById('addTermBtn').addEventListener('click', () =>
+        addDynamicRow('termsContainer', 'term-text', 'Add a term...', '', 'term')
+      );
+      document.getElementById('downloadBtn').addEventListener('click', async () => {
+        try {
+          await window.TCVFirebase.commitDocument({
+            type: window.TCVNumbers.PREFIX.quotation,
+            noId: 'quoteNo',
+            collectState,
+          });
+          if (window.TCVProjects) await window.TCVProjects.refresh();
+          renderPreview();
+        } catch (e) {
+          D.setStatus(e.message || 'Could not save document.');
+          return;
+        }
+        const no = document.getElementById('quoteNo').value.trim() || 'quotation';
+        D.downloadPdf('quote-sheet', D.safeFilename('Quotation', no));
+      });
+      applyState(defaultState());
+      numbering.refresh();
+    })
+    .catch(() => {});
 });

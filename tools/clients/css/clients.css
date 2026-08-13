@@ -1,0 +1,126 @@
+.registry-panel {
+  padding: 28px 32px 48px;
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+.registry-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.registry-toolbar input {
+  flex: 1;
+}
+
+.client-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.client-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  color: inherit;
+}
+
+.client-card:hover,
+.client-card.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 6px 18px rgba(15, 74, 99, 0.08);
+}
+
+.client-card .card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.client-card .card-name {
+  font-weight: 700;
+  color: var(--accent-dark);
+  font-size: 15px;
+}
+
+.client-card .tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--light-fill);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.client-card .card-meta {
+  font-size: 12.5px;
+  color: var(--grey);
+  line-height: 1.45;
+}
+
+.type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.type-toggle.cols3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.type-toggle button {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--grey);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.type-toggle button.is-on {
+  border-color: var(--accent);
+  background: var(--light-fill);
+  color: var(--accent-dark);
+}
+
+.list-empty {
+  color: var(--grey);
+  font-size: 13.5px;
+  line-height: 1.5;
+  padding: 24px 8px;
+}
+
+.doc-history {
+  margin-top: 8px;
+}
+
+.doc-history .tools-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .registry-panel {
+    max-height: none;
+  }
+}

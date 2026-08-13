@@ -93,10 +93,17 @@ function renderPreview() {
   g('pv-companyTag').textContent = COMPANY.tagline || '';
   g('pv-companyShort').textContent = COMPANY.shortName || '';
 
-  g('pv-clientName').textContent = val('clientName') || '[Client company name]';
+  g('pv-clientName').textContent = val('clientName') || '[Select a client]';
   g('pv-clientName').className = val('clientName') ? 'name' : 'name empty-ph';
   g('pv-clientAttn').textContent = val('clientAttn');
   g('pv-clientAddr').textContent = val('clientAddr');
+  if (g('pv-clientReg')) {
+    const reg = val('clientReg');
+    const type = val('clientType');
+    g('pv-clientReg').textContent = reg
+      ? (type === 'individual' ? 'NRIC No. ' : 'Registration No. ') + reg
+      : '';
+  }
 
   g('pv-invNo').textContent = val('invNo') || '—';
   g('pv-invNo2').textContent = val('invNo') || '—';
@@ -182,9 +189,14 @@ function collectState() {
   document.querySelectorAll('.note-text').forEach((t) => notes.push(t.value));
 
   const fieldIds = [
+    'clientId',
+    'projectId',
+    'docYear',
     'clientName',
     'clientAttn',
     'clientAddr',
+    'clientReg',
+    'clientType',
     'serviceCode',
     'jobNo',
     'issueNo',
@@ -220,6 +232,8 @@ function applyState(state) {
     const el = document.getElementById(id);
     if (el) el.value = state.fields[id];
   });
+  if (window.TCVClients) window.TCVClients.syncSelected();
+  if (window.TCVProjects) window.TCVProjects.syncSelected();
   (state.items || []).forEach((it) => addItem(it));
   (state.notes || []).forEach((n) => addNote(n));
   if (numbering) numbering.refresh();
@@ -255,31 +269,66 @@ function defaultState() {
 let numbering;
 
 document.addEventListener('DOMContentLoaded', () => {
-  D.bindLivePreview(renderPreview);
-  D.bindDraftActions({
-    storageKey: STORAGE_KEY,
-    collectState,
-    applyState,
-    defaultState,
-  });
-  numbering = window.TCVNumbers.bind({
-    prefix: window.TCVNumbers.PREFIX.invoice,
-    noId: 'invNo',
-    serviceId: 'serviceCode',
-    jobId: 'jobNo',
-    issueId: 'issueNo',
-    relatedId: 'invQuote',
-    nextBtnId: 'nextJobBtn',
-    hintId: 'invNoHint',
-    onChange: renderPreview,
-  });
-  document.getElementById('addItemBtn').addEventListener('click', () => addItem());
-  document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
-  document.getElementById('downloadBtn').addEventListener('click', () => {
-    if (numbering) numbering.commit();
-    const invNo = document.getElementById('invNo').value.trim() || 'invoice';
-    D.downloadPdf('invoice-sheet', D.safeFilename('Invoice', invNo));
-  });
-  applyState(defaultState());
-  numbering.refresh();
+  const start = window.TCVFirebase && window.TCVFirebase.afterAuth
+    ? window.TCVFirebase.afterAuth()
+    : Promise.resolve();
+  start
+    .then(() => {
+      D.bindLivePreview(renderPreview);
+      if (window.TCVClients) {
+        window.TCVClients.bindPicker({
+          onChange: () => {
+            if (numbering) numbering.refresh();
+            else renderPreview();
+          },
+        });
+      }
+      D.bindDraftActions({
+        storageKey: STORAGE_KEY,
+        collectState,
+        applyState,
+        defaultState,
+      });
+      numbering = window.TCVNumbers.bind({
+        prefix: window.TCVNumbers.PREFIX.invoice,
+        noId: 'invNo',
+        serviceId: 'serviceCode',
+        jobId: 'jobNo',
+        issueId: 'issueNo',
+        relatedId: 'invQuote',
+        nextBtnId: 'nextJobBtn',
+        hintId: 'invNoHint',
+        onChange: renderPreview,
+      });
+      if (window.TCVProjects) {
+        window.TCVProjects.bindPicker({
+          prefix: window.TCVNumbers.PREFIX.invoice,
+          onChange: () => {
+            if (numbering) numbering.refresh();
+            else renderPreview();
+          },
+        });
+      }
+      document.getElementById('addItemBtn').addEventListener('click', () => addItem());
+      document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
+      document.getElementById('downloadBtn').addEventListener('click', async () => {
+        try {
+          await window.TCVFirebase.commitDocument({
+            type: window.TCVNumbers.PREFIX.invoice,
+            noId: 'invNo',
+            collectState,
+          });
+          if (window.TCVProjects) await window.TCVProjects.refresh();
+          renderPreview();
+        } catch (e) {
+          D.setStatus(e.message || 'Could not save document.');
+          return;
+        }
+        const invNo = document.getElementById('invNo').value.trim() || 'invoice';
+        D.downloadPdf('invoice-sheet', D.safeFilename('Invoice', invNo));
+      });
+      applyState(defaultState());
+      numbering.refresh();
+    })
+    .catch(() => {});
 });

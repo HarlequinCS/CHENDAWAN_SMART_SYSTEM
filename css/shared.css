@@ -24,6 +24,6 @@ a {
   color: var(--accent);
 }
 
-a:hover {
-  color: var(--accent-dark);
+html.auth-wait body {
+  visibility: hidden;
 }

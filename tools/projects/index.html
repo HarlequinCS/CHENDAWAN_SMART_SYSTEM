@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projects · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="../clients/css/clients.css">
+</head>
+<body>
+<div class="app">
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Projects</span>
+    </div>
+    <h1 id="formTitle">New Project</h1>
+    <p class="sub">A project is one job number. Documents issued against it share that job and increment their own issue.</p>
+
+    <fieldset>
+      <legend>Project</legend>
+      <label class="first">Client</label>
+      <select id="clientId"></select>
+      <p class="field-hint"><a href="../../tools/clients/">Register a client</a> first if they are not in the list.</p>
+      <label>Project name</label>
+      <input type="text" id="name" placeholder="e.g. HRSB One Payroll Remediation">
+      <label>Primary service code</label>
+      <select id="serviceCode"></select>
+      <label>Notes (optional)</label>
+      <textarea id="notes" placeholder="Internal notes — not printed on documents"></textarea>
+      <input type="hidden" id="projectRecordId" value="">
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button type="button" class="primary-btn" id="saveBtn">Save project</button>
+      <div class="save-row">
+        <button type="button" id="newBtn">New project</button>
+        <button type="button" id="deleteBtn">Delete</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Saving a new project assigns the next job number for this year (001, 002, …).</p>
+    </div>
+  </div>
+
+  <div class="preview-panel registry-panel">
+    <div class="registry-toolbar">
+      <input type="text" id="search" placeholder="Search projects…">
+    </div>
+    <div class="client-list" id="projectList"></div>
+    <div id="docHistory" class="doc-history"></div>
+  </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="../../js/firebase-config.js"></script>
+<script src="../../js/firebase.js"></script>
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/service-codes.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
+<script src="../../js/clients.js"></script>
+<script src="../../js/projects.js"></script>
+<script src="js/projects-page.js"></script>
+</body>
+</html>

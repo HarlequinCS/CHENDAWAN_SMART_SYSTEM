@@ -9,6 +9,7 @@
  * SLA/2026/001-WSD-100/01
  * POL/2026/001-ITC-500/01
  * ICA/2026/001-WSD-100/01
+ * PSL/2026/001-ITC-500/01
  *
  * PREFIX / YEAR / JOB - SERVICE CODE [ - ISSUE ]
  * Issue is omitted when it is 1. A second invoice for the same job:
@@ -25,6 +26,7 @@ window.TCVNumbers = (function () {
     sla: 'SLA',
     privacy: 'POL',
     ica: 'ICA',
+    payslip: 'PSL',
   };
 
   function pad(n, width) {
@@ -86,7 +88,7 @@ window.TCVNumbers = (function () {
   function parse(str) {
     const s = (str || '').trim();
     if (!s) return null;
-    const long = /^(QUO|INV|RCP|NDA|MSA|SLA|POL|ICA)\/(\d{4})\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
+    const long = /^(QUO|INV|RCP|NDA|MSA|SLA|POL|ICA|PSL)\/(\d{4})\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
     if (long) {
       return {
         prefix: long[1].toUpperCase(),
@@ -96,7 +98,7 @@ window.TCVNumbers = (function () {
         issue: parseInt(long[5], 10) || 1,
       };
     }
-    const short = /^(QUO|INV|RCP|NDA|MSA|SLA|POL|ICA)\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
+    const short = /^(QUO|INV|RCP|NDA|MSA|SLA|POL|ICA|PSL)\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
     if (short) {
       return {
         prefix: short[1].toUpperCase(),
@@ -147,10 +149,13 @@ window.TCVNumbers = (function () {
 
     function refresh() {
       const parsedRelated = relatedEl ? parse(relatedEl.value) : null;
+      const yearEl = document.getElementById('docYear');
       const code = serviceEl.value;
       const job = parseInt(jobEl.value, 10);
       const issue = issueEl ? parseInt(issueEl.value, 10) || 1 : 1;
-      const year = parsedRelated ? parsedRelated.year : yearNow();
+      let year = yearNow();
+      if (yearEl && yearEl.value) year = parseInt(yearEl.value, 10) || year;
+      else if (parsedRelated) year = parsedRelated.year;
       const no = build({ prefix, year, job, code, issue });
       noEl.value = no;
       if (hintEl) {
@@ -180,6 +185,20 @@ window.TCVNumbers = (function () {
     if (relatedEl) {
       relatedEl.addEventListener('input', () => {
         const p = parse(relatedEl.value);
+        if (p && window.TCVProjects) {
+          const proj = window.TCVProjects.findByNumber(p);
+          if (proj) {
+            const clientSel = document.getElementById('clientId');
+            if (clientSel && proj.clientId && clientSel.value !== proj.clientId) {
+              clientSel.value = proj.clientId;
+              if (window.TCVClients) window.TCVClients.syncSelected();
+            }
+            const projectSel = document.getElementById('projectId');
+            if (projectSel) projectSel.value = proj.id;
+            window.TCVProjects.syncSelected();
+            return;
+          }
+        }
         if (!p) {
           refresh();
           return;

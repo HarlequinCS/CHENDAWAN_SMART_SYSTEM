@@ -1,29 +1,60 @@
 function renderTools() {
-  const grid = document.getElementById('toolsGrid');
-  if (!grid || !Array.isArray(window.CHENDAWAN_TOOLS)) return;
+  const root = document.getElementById('hubSections');
+  if (!root || !Array.isArray(window.CHENDAWAN_TOOLS)) return;
+  root.innerHTML = '';
 
-  grid.innerHTML = '';
+  const groups = [
+    { id: 'records', label: 'Records' },
+    { id: 'documents', label: 'Documents' },
+    { id: 'finance', label: 'Finance' },
+  ];
 
-  window.CHENDAWAN_TOOLS.forEach((tool) => {
-    const isReady = tool.status === 'ready';
-    const el = document.createElement(isReady ? 'a' : 'div');
-    el.className = 'tool-tile' + (isReady ? '' : ' is-soon');
-    if (isReady) {
-      el.href = tool.href;
-    } else {
-      el.setAttribute('aria-disabled', 'true');
-    }
+  groups.forEach((group) => {
+    const tools = window.CHENDAWAN_TOOLS.filter((tool) => {
+      const g = tool.group || 'documents';
+      return g === group.id;
+    });
+    if (!tools.length) return;
 
-    el.innerHTML = `
-      <div class="tool-tile-top">
-        <h2 class="tool-name">${tool.name}</h2>
-        ${isReady ? '<span class="tool-badge">Open</span>' : '<span class="tool-badge soon">Coming soon</span>'}
-      </div>
-      <p class="tool-desc">${tool.description}</p>
-    `;
+    const label = document.createElement('p');
+    label.className = 'tools-label';
+    label.textContent = group.label;
+    root.appendChild(label);
 
-    grid.appendChild(el);
+    const grid = document.createElement('div');
+    grid.className = 'tools-grid';
+    tools.forEach((tool) => {
+      const isReady = tool.status === 'ready';
+      const el = document.createElement(isReady ? 'a' : 'div');
+      el.className = 'tool-tile' + (isReady ? '' : ' is-soon');
+      if (isReady) el.href = tool.href;
+      else el.setAttribute('aria-disabled', 'true');
+      el.innerHTML =
+        '<div class="tool-tile-top">' +
+        '<h2 class="tool-name"></h2>' +
+        (isReady
+          ? '<span class="tool-badge">Open</span>'
+          : '<span class="tool-badge soon">Coming soon</span>') +
+        '</div>' +
+        '<p class="tool-desc"></p>';
+      el.querySelector('.tool-name').textContent = tool.name;
+      el.querySelector('.tool-desc').textContent = tool.description;
+      grid.appendChild(el);
+    });
+    root.appendChild(grid);
   });
 }
 
-document.addEventListener('DOMContentLoaded', renderTools);
+document.addEventListener('DOMContentLoaded', () => {
+  const boot = window.TCVFirebase && window.TCVFirebase.ready
+    ? window.TCVFirebase.ready
+    : Promise.resolve();
+  boot.then(() => {
+    const emailEl = document.getElementById('sessionEmail');
+    const user = window.TCVFirebase && window.TCVFirebase.currentUser();
+    if (emailEl && user) emailEl.textContent = user.email || '';
+    const out = document.getElementById('signOutBtn');
+    if (out) out.addEventListener('click', () => window.TCVFirebase.signOut());
+    renderTools();
+  }).catch(() => {});
+});

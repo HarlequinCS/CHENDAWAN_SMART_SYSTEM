@@ -22,20 +22,21 @@
 
     <fieldset>
       <legend>Document Number</legend>
-      <label class="first">Primary service code</label>
+      <label class="first">Job / project</label>
+      <select id="projectId"></select>
+      <p class="field-hint"><a href="../../tools/projects/">Create a project</a> to get a job number. Issue is assigned when you download the PDF.</p>
+      <input type="hidden" id="docYear">
+      <label>Primary service code</label>
       <select id="serviceCode"></select>
       <p class="field-hint">Numbers follow the service code, e.g. SLA/2026/001-WSD-100/01</p>
       <div class="row2">
         <div>
           <label>Job no.</label>
-          <div class="inline-row">
-            <input type="number" id="jobNo" min="1" step="1">
-            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
-          </div>
+          <input type="number" id="jobNo" min="1" step="1" readonly>
         </div>
         <div>
           <label>Issue</label>
-          <input type="number" id="issueNo" min="1" step="1" value="1">
+          <input type="number" id="issueNo" min="1" step="1" value="1" readonly>
         </div>
       </div>
       <label>SLA no.</label>
@@ -47,10 +48,17 @@
 
     <fieldset>
       <legend>Client</legend>
-      <label class="first">Company name</label>
-      <input type="text" id="clientName">
-      <label>Principal place of business</label>
-      <input type="text" id="clientAddr">
+      <label class="first">Registered client</label>
+      <select id="clientId"></select>
+      <p class="field-hint"><a href="../../tools/clients/">Register or edit clients</a></p>
+      <div class="client-summary is-empty" id="clientSummary"></div>
+      <input type="hidden" id="clientName">
+      <input type="hidden" id="clientAttn">
+      <input type="hidden" id="clientAddr">
+      <input type="hidden" id="clientReg">
+      <input type="hidden" id="clientSignName">
+      <input type="hidden" id="clientSignTitle">
+      <input type="hidden" id="clientType">
     </fieldset>
 
     <fieldset>
@@ -69,14 +77,6 @@
       <input type="date" id="effDate">
       <label>Signature date</label>
       <input type="date" id="signDate">
-    </fieldset>
-
-    <fieldset>
-      <legend>Client Signatory</legend>
-      <label class="first">Name</label>
-      <input type="text" id="clientSignName">
-      <label>Title</label>
-      <input type="text" id="clientSignTitle">
     </fieldset>
 
     <div class="sticky-actions">
@@ -124,8 +124,11 @@
       </div>
       <div class="party-block">
         <div class="eyebrow">CLIENT</div>
-        <div class="name" data-bind="clientName" data-ph="[Client Company Name]">[Client Company Name]</div>
-        <div class="line">Having its principal place of business at <span data-bind="clientAddr" data-ph="[Client Address]">[Client Address]</span>.</div>
+        <div class="name" data-bind="clientName" data-ph="[Client name]">[Client name]</div>
+        <div class="line" data-show-type="business">Registration No. <span data-bind="clientReg" data-ph="[SSM No.]">[SSM No.]</span></div>
+        <div class="line" data-show-type="individual">NRIC No. <span data-bind="clientReg" data-ph="[NRIC No.]">[NRIC No.]</span></div>
+        <div class="line" data-show-type="business">Having its principal place of business at <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
+        <div class="line" data-show-type="individual">Of <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
       </div>
       <p class="legal-intro">The Service Provider and the Client are collectively referred to as the “Parties” and individually as a “Party”.</p>
 
@@ -240,9 +243,10 @@
           <div class="sig-line">Signature</div>
         </div>
         <div class="sig-card">
-          <div class="sig-label">For and on behalf of <span data-bind="clientName" data-ph="[Client Company Name]">[Client Company Name]</span></div>
+          <div class="sig-label">For and on behalf of <span data-bind="clientName" data-ph="[Client name]">[Client name]</span></div>
           <div class="row">Name: <span data-bind="clientSignName" data-ph="[Signatory Name]">[Signatory Name]</span></div>
-          <div class="row">Title: <span data-bind="clientSignTitle" data-ph="[Title]">[Title]</span></div>
+          <div class="row" data-show-type="business">Title: <span data-bind="clientSignTitle" data-ph="[Title]">[Title]</span></div>
+          <div class="row" data-show-type="individual">NRIC No.: <span data-bind="clientReg" data-ph="[NRIC No.]">[NRIC No.]</span></div>
           <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
           <div class="sig-line">Signature</div>
         </div>
@@ -250,10 +254,17 @@
     </div>
   </div>
 </div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="../../js/firebase-config.js"></script>
+<script src="../../js/firebase.js"></script>
 <script src="../../js/company-defaults.js"></script>
 <script src="../../js/service-codes.js"></script>
 <script src="../../js/doc-common.js"></script>
 <script src="../../js/doc-numbers.js"></script>
+<script src="../../js/clients.js"></script>
+<script src="../../js/projects.js"></script>
 <script src="../../js/legal-common.js"></script>
 <script src="js/sla.js"></script>
 </body>

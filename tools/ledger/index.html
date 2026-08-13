@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Ledger · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="css/ledger.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="ledger-shell">
+  <aside class="ledger-nav">
+    <a class="back-link" href="../../">← Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Smart Ledger</span>
+    </div>
+    <nav id="ledgerNav">
+      <a href="#dashboard" data-view="dashboard">Dashboard</a>
+      <a href="#sales" data-view="sales">Sales (AR)</a>
+      <a href="#purchases" data-view="purchases">Purchases (AP)</a>
+      <a href="#expenses" data-view="expenses">Expenses</a>
+      <a href="#bank" data-view="bank">Bank</a>
+      <a href="#journal" data-view="journal">Journal</a>
+      <a href="#reports" data-view="reports">Reports</a>
+      <a href="#settings" data-view="settings">Settings</a>
+    </nav>
+  </aside>
+  <main class="ledger-main">
+    <header class="ledger-head">
+      <h1 id="viewTitle">Dashboard</h1>
+      <p class="sub" id="viewSub">Cash, receivables, payables, and this month’s result.</p>
+    </header>
+    <div id="statusMsg" class="status-msg"></div>
+    <div id="viewRoot"></div>
+  </main>
+</div>
+<div class="report-print" id="reportPrint" hidden>
+  <div class="doc-sheet" id="report-sheet"></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="../../js/firebase-config.js"></script>
+<script src="../../js/firebase.js"></script>
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
+<script src="../../js/clients.js"></script>
+<script src="../../js/workers.js"></script>
+<script src="../../js/projects.js"></script>
+<script src="../../js/ledger.js"></script>
+<script src="js/ledger-app.js"></script>
+</body>
+</html>

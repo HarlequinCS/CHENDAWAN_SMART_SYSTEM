@@ -30,9 +30,16 @@ function renderPreview() {
   g('pv-companyTag').textContent = COMPANY.tagline || '';
   g('pv-companyShort').textContent = COMPANY.shortName || '';
 
-  g('pv-clientName').textContent = val('clientName') || '[Client company name]';
+  g('pv-clientName').textContent = val('clientName') || '[Select a client]';
   g('pv-clientName').className = val('clientName') ? 'name' : 'name empty-ph';
   g('pv-clientAttn').textContent = val('clientAttn');
+  if (g('pv-clientReg')) {
+    const reg = val('clientReg');
+    const type = val('clientType');
+    g('pv-clientReg').textContent = reg
+      ? (type === 'individual' ? 'NRIC No. ' : 'Registration No. ') + reg
+      : '';
+  }
 
   g('pv-receiptNo').textContent = val('receiptNo') || '—';
   g('pv-receiptDate').textContent = D.formatDate(val('receiptDate')) || '—';
@@ -69,8 +76,14 @@ function collectState() {
   const notes = [];
   document.querySelectorAll('.note-text').forEach((t) => notes.push(t.value));
   const fieldIds = [
+    'clientId',
+    'projectId',
+    'docYear',
     'clientName',
     'clientAttn',
+    'clientAddr',
+    'clientReg',
+    'clientType',
     'serviceCode',
     'jobNo',
     'issueNo',
@@ -80,6 +93,7 @@ function collectState() {
     'projName',
     'projFor',
     'amount',
+    'bankAccountId',
     'payMethod',
     'payRef',
     'amountWords',
@@ -103,6 +117,8 @@ function applyState(state) {
     const el = document.getElementById(id);
     if (el) el.value = state.fields[id];
   });
+  if (window.TCVClients) window.TCVClients.syncSelected();
+  if (window.TCVProjects) window.TCVProjects.syncSelected();
   (state.notes || []).forEach((n) => addNote(n));
   if (numbering) numbering.refresh();
   else renderPreview();
@@ -137,38 +153,92 @@ function defaultState() {
 let numbering;
 
 document.addEventListener('DOMContentLoaded', () => {
-  D.bindLivePreview(renderPreview);
-  D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
+  const start = window.TCVFirebase && window.TCVFirebase.afterAuth
+    ? window.TCVFirebase.afterAuth()
+    : Promise.resolve();
+  start
+    .then(() => {
+      D.bindLivePreview(renderPreview);
+      if (window.TCVClients) {
+        window.TCVClients.bindPicker({
+          onChange: () => {
+            if (numbering) numbering.refresh();
+            else renderPreview();
+          },
+        });
+      }
+      D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
 
-  numbering = window.TCVNumbers.bind({
-    prefix: window.TCVNumbers.PREFIX.receipt,
-    noId: 'receiptNo',
-    serviceId: 'serviceCode',
-    jobId: 'jobNo',
-    issueId: 'issueNo',
-    relatedId: 'refInvoice',
-    nextBtnId: 'nextJobBtn',
-    hintId: 'receiptNoHint',
-    onChange: renderPreview,
-  });
+      numbering = window.TCVNumbers.bind({
+        prefix: window.TCVNumbers.PREFIX.receipt,
+        noId: 'receiptNo',
+        serviceId: 'serviceCode',
+        jobId: 'jobNo',
+        issueId: 'issueNo',
+        relatedId: 'refInvoice',
+        nextBtnId: 'nextJobBtn',
+        hintId: 'receiptNoHint',
+        onChange: renderPreview,
+      });
+      if (window.TCVProjects) {
+        window.TCVProjects.bindPicker({
+          prefix: window.TCVNumbers.PREFIX.receipt,
+          onChange: () => {
+            if (numbering) numbering.refresh();
+            else renderPreview();
+          },
+        });
+      }
+      if (window.TCVLedger) {
+        window.TCVLedger.ensureSeeded().then(() => {
+          const sel = document.getElementById('bankAccountId');
+          if (!sel) return;
+          const banks = window.TCVLedger.listBankAccounts();
+          const def = window.TCVLedger.defaultBankAccount();
+          sel.innerHTML = '<option value="">Default bank</option>';
+          banks.forEach((b) => {
+            sel.innerHTML +=
+              '<option value="' +
+              b.id +
+              '">' +
+              (b.name || 'Bank') +
+              (b.accountNo ? ' · ' + b.accountNo : '') +
+              '</option>';
+          });
+          if (def) sel.value = def.id;
+        });
+      }
 
-  document.getElementById('amount').addEventListener('input', () => {
-    if (!wordsManual) {
-      const n = parseFloat(document.getElementById('amount').value) || 0;
-      document.getElementById('amountWords').value = D.amountInWords(n);
-    }
-    renderPreview();
-  });
-  document.getElementById('amountWords').addEventListener('input', () => {
-    wordsManual = true;
-  });
+      document.getElementById('amount').addEventListener('input', () => {
+        if (!wordsManual) {
+          const n = parseFloat(document.getElementById('amount').value) || 0;
+          document.getElementById('amountWords').value = D.amountInWords(n);
+        }
+        renderPreview();
+      });
+      document.getElementById('amountWords').addEventListener('input', () => {
+        wordsManual = true;
+      });
 
-  document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
-  document.getElementById('downloadBtn').addEventListener('click', () => {
-    if (numbering) numbering.commit();
-    const no = document.getElementById('receiptNo').value.trim() || 'receipt';
-    D.downloadPdf('receipt-sheet', D.safeFilename('Receipt', no));
-  });
-  applyState(defaultState());
-  numbering.refresh();
+      document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
+      document.getElementById('downloadBtn').addEventListener('click', async () => {
+        try {
+          await window.TCVFirebase.commitDocument({
+            type: window.TCVNumbers.PREFIX.receipt,
+            noId: 'receiptNo',
+            collectState,
+          });
+          if (window.TCVProjects) await window.TCVProjects.refresh();
+          renderPreview();
+        } catch (e) {
+          D.setStatus(e.message || 'Could not save document.');
+          return;
+        }
+        const no = document.getElementById('receiptNo').value.trim() || 'receipt';
+        D.downloadPdf('receipt-sheet', D.safeFilename('Receipt', no));
+      });
+      applyState(defaultState());
+      numbering.refresh();
+    })
+    .catch(() => {});
 });

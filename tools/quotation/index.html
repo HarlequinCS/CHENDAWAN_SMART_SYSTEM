@@ -23,34 +23,40 @@
 
     <fieldset>
       <legend>Bill To</legend>
-      <label class="first">Client company name</label>
-      <input type="text" id="clientName" placeholder="e.g. HRSB Holdings Sdn Bhd">
-      <label>Attention / contact person</label>
-      <input type="text" id="clientAttn" placeholder="e.g. HR & Finance Department">
-      <label>Client address (optional)</label>
-      <input type="text" id="clientAddr" placeholder="">
+      <label class="first">Registered client</label>
+      <select id="clientId"></select>
+      <p class="field-hint"><a href="../../tools/clients/">Register or edit clients</a></p>
+      <div class="client-summary is-empty" id="clientSummary"></div>
+      <input type="hidden" id="clientName">
+      <input type="hidden" id="clientAttn">
+      <input type="hidden" id="clientAddr">
+      <input type="hidden" id="clientReg">
+      <input type="hidden" id="clientSignName">
+      <input type="hidden" id="clientSignTitle">
+      <input type="hidden" id="clientType">
     </fieldset>
 
     <fieldset>
       <legend>Quotation Details</legend>
-      <label class="first">Primary service code</label>
+      <label class="first">Job / project</label>
+      <select id="projectId"></select>
+      <p class="field-hint"><a href="../../tools/projects/">Create a project</a> to get a job number. Issue is assigned when you download the PDF.</p>
+      <input type="hidden" id="docYear">
+      <label>Primary service code</label>
       <select id="serviceCode"></select>
-      <p class="field-hint">Numbers follow the service code, e.g. QUO/2026/001-WSD-100/01</p>
+      <p class="field-hint">Numbers follow the project, e.g. QUO/2026/001-WSD-100/01</p>
       <div class="row2">
         <div>
           <label>Job no.</label>
-          <div class="inline-row">
-            <input type="number" id="jobNo" min="1" step="1">
-            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
-          </div>
+          <input type="number" id="jobNo" min="1" step="1" readonly>
         </div>
         <div>
           <label>Issue</label>
-          <input type="number" id="issueNo" min="1" step="1" value="1">
+          <input type="number" id="issueNo" min="1" step="1" value="1" readonly>
         </div>
       </div>
       <label>Quotation no.</label>
-      <input type="text" id="quoteNo" readonly placeholder="Select a service code">
+      <input type="text" id="quoteNo" readonly placeholder="Select a project">
       <p class="field-hint" id="quoteNoHint"></p>
       <div class="row2">
         <div>
@@ -140,6 +146,7 @@
         <div class="bill-to">
           <div class="eyebrow">BILL TO</div>
           <div class="name" id="pv-clientName">&nbsp;</div>
+          <div class="line" id="pv-clientReg"></div>
           <div class="line" id="pv-clientAttn"></div>
           <div class="line" id="pv-clientAddr"></div>
         </div>
@@ -190,10 +197,17 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="../../js/firebase-config.js"></script>
+<script src="../../js/firebase.js"></script>
 <script src="../../js/company-defaults.js"></script>
 <script src="../../js/service-codes.js"></script>
 <script src="../../js/doc-common.js"></script>
 <script src="../../js/doc-numbers.js"></script>
+<script src="../../js/clients.js"></script>
+<script src="../../js/projects.js"></script>
 <script src="js/quotation.js"></script>
 </body>
 </html>

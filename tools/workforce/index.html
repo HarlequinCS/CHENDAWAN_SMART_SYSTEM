@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workforce · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="../clients/css/clients.css">
+</head>
+<body>
+<div class="app">
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Workforce</span>
+    </div>
+    <h1 id="formTitle">Register a Worker</h1>
+    <p class="sub">Employees, independent contractors, and freelancers you pay. Payslip and ICA pick from this list.</p>
+
+    <fieldset>
+      <legend>Type</legend>
+      <div class="type-toggle cols3" role="group" aria-label="Worker type">
+        <button type="button" id="typeEmployee" class="is-on" data-type="employee">Employee</button>
+        <button type="button" id="typeContractor" data-type="contractor">Contractor</button>
+        <button type="button" id="typeFreelancer" data-type="freelancer">Freelancer</button>
+      </div>
+      <input type="hidden" id="workerType" value="employee">
+      <input type="hidden" id="workerRecordId" value="">
+    </fieldset>
+
+    <fieldset>
+      <legend>Details</legend>
+      <label class="first">Full name</label>
+      <input type="text" id="name" placeholder="e.g. Ahmad Bin Ali">
+      <label>NRIC no.</label>
+      <input type="text" id="nric" placeholder="e.g. 041212-01-0085">
+      <div id="empWrap">
+        <label>Employee ID</label>
+        <input type="text" id="employeeId" placeholder="e.g. TCV-E-001">
+        <label>Position</label>
+        <input type="text" id="position" placeholder="e.g. Developer">
+      </div>
+      <div id="posWrap" hidden>
+        <label>Role / specialty</label>
+        <input type="text" id="positionAlt" placeholder="e.g. Frontend developer">
+      </div>
+      <label>Address</label>
+      <input type="text" id="address" placeholder="Full address">
+      <div class="row2">
+        <div>
+          <label>Phone</label>
+          <input type="text" id="phone">
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="text" id="email">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Bank</legend>
+      <label class="first">Bank name</label>
+      <input type="text" id="bankName" placeholder="e.g. Maybank">
+      <label>Account no.</label>
+      <input type="text" id="bankAcc">
+    </fieldset>
+
+    <fieldset id="statWrap">
+      <legend>Statutory (employees)</legend>
+      <label class="first">EPF no.</label>
+      <input type="text" id="epfNo">
+      <label>SOCSO no.</label>
+      <input type="text" id="socsoNo">
+      <label>EIS no.</label>
+      <input type="text" id="eisNo">
+      <label>PCB / tax status</label>
+      <input type="text" id="pcbStatus" placeholder="e.g. Resident, tax resident">
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes</legend>
+      <label class="first">Internal notes (optional)</label>
+      <textarea id="notes"></textarea>
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button type="button" class="primary-btn" id="saveBtn">Save worker</button>
+      <div class="save-row">
+        <button type="button" id="newBtn">New worker</button>
+        <button type="button" id="deleteBtn">Delete</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Workers are saved in Firebase and can be selected on Payslip and ICA.</p>
+    </div>
+  </div>
+
+  <div class="preview-panel registry-panel">
+    <div class="registry-toolbar">
+      <input type="text" id="search" placeholder="Search workforce…">
+    </div>
+    <div class="client-list" id="workerList"></div>
+  </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="../../js/firebase-config.js"></script>
+<script src="../../js/firebase.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/workers.js"></script>
+<script src="js/workforce-page.js"></script>
+</body>
+</html>

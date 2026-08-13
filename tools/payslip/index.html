@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payslip / Payment Advice · ChendAwan Tools</title>
+  <link rel="stylesheet" href="../../css/shared.css">
+  <link rel="stylesheet" href="../../css/doc-tool.css">
+  <link rel="stylesheet" href="css/payslip.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="form-panel">
+    <a class="back-link" href="../../">← Back to Tools</a>
+    <div class="brand-row">
+      <img src="../../assets/logo.png" alt="ChendAwan">
+      <span>Payslip / Payment Advice</span>
+    </div>
+    <h1>Issue Pay</h1>
+    <p class="sub">Pick a worker and project. Employees get a payslip with statutory blocks; contractors get a payment advice.</p>
+
+    <fieldset>
+      <legend>Payee</legend>
+      <label class="first">Workforce register</label>
+      <select id="workerId"></select>
+      <p class="field-hint"><a href="../../tools/workforce/">Register a worker</a> first.</p>
+      <div class="client-summary is-empty" id="workerSummary"></div>
+      <input type="hidden" id="workerName">
+      <input type="hidden" id="workerNric">
+      <input type="hidden" id="workerPosition">
+      <input type="hidden" id="workerEmployeeId">
+      <input type="hidden" id="workerBankName">
+      <input type="hidden" id="workerBankAcc">
+      <input type="hidden" id="workerKind">
+      <input type="hidden" id="projName">
+    </fieldset>
+
+    <fieldset>
+      <legend>Document Number</legend>
+      <label class="first">Job / project</label>
+      <select id="projectId"></select>
+      <p class="field-hint"><a href="../../tools/projects/">Create a project</a> to get a job number. Issue is assigned when you download the PDF.</p>
+      <input type="hidden" id="docYear">
+      <label>Primary service code</label>
+      <select id="serviceCode"></select>
+      <p class="field-hint">Numbers follow the project, e.g. PSL/2026/001-ITC-500/01</p>
+      <div class="row2">
+        <div>
+          <label>Job no.</label>
+          <input type="number" id="jobNo" min="1" step="1" readonly>
+        </div>
+        <div>
+          <label>Issue</label>
+          <input type="number" id="issueNo" min="1" step="1" value="1" readonly>
+        </div>
+      </div>
+      <label>Document no.</label>
+      <input type="text" id="pslNo" readonly placeholder="Select a project">
+      <p class="field-hint" id="pslNoHint"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Period</legend>
+      <label class="first">Month</label>
+      <input type="month" id="payMonth">
+      <div class="row2">
+        <div>
+          <label>Period from</label>
+          <input type="date" id="periodFrom">
+        </div>
+        <div>
+          <label>Period to</label>
+          <input type="date" id="periodTo">
+        </div>
+      </div>
+      <label>Payment date</label>
+      <input type="date" id="payDate">
+    </fieldset>
+
+    <fieldset>
+      <legend>Earnings</legend>
+      <label class="first" id="basicLabel">Basic salary (RM)</label>
+      <input type="number" id="earnBasic" step="0.01" min="0" value="0">
+      <div class="row2">
+        <div>
+          <label>Allowance (RM)</label>
+          <input type="number" id="earnAllow" step="0.01" min="0" value="0">
+        </div>
+        <div>
+          <label>Overtime (RM)</label>
+          <input type="number" id="earnOt" step="0.01" min="0" value="0">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Bonus (RM)</label>
+          <input type="number" id="earnBonus" step="0.01" min="0" value="0">
+        </div>
+        <div>
+          <label>Other earnings (RM)</label>
+          <input type="number" id="earnOther" step="0.01" min="0" value="0">
+        </div>
+      </div>
+      <p class="field-hint" id="grossHint">Gross: RM 0.00</p>
+    </fieldset>
+
+    <fieldset id="deductWrap">
+      <legend>Deductions (employee)</legend>
+      <div class="row2">
+        <div>
+          <label>EPF employee (RM)</label>
+          <input type="number" id="dedEpf" step="0.01" min="0" value="0">
+        </div>
+        <div>
+          <label>SOCSO employee (RM)</label>
+          <input type="number" id="dedSocso" step="0.01" min="0" value="0">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>EIS employee (RM)</label>
+          <input type="number" id="dedEis" step="0.01" min="0" value="0">
+        </div>
+        <div>
+          <label>PCB / tax (RM)</label>
+          <input type="number" id="dedPcb" step="0.01" min="0" value="0">
+        </div>
+      </div>
+      <label>Other deductions (RM)</label>
+      <input type="number" id="dedOther" step="0.01" min="0" value="0">
+      <p class="field-hint" id="netHint">Net pay: RM 0.00</p>
+    </fieldset>
+
+    <fieldset id="otherDedWrap" hidden>
+      <legend>Deductions</legend>
+      <label class="first">Other deductions (RM)</label>
+      <input type="number" id="dedOtherAlt" step="0.01" min="0" value="0">
+      <p class="field-hint" id="netHintAlt">Net pay: RM 0.00</p>
+    </fieldset>
+
+    <fieldset id="employerWrap">
+      <legend>Employer statutory (reference)</legend>
+      <div class="row2">
+        <div>
+          <label>EPF employer (RM)</label>
+          <input type="number" id="erEpf" step="0.01" min="0" value="0">
+        </div>
+        <div>
+          <label>SOCSO employer (RM)</label>
+          <input type="number" id="erSocso" step="0.01" min="0" value="0">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>EIS employer (RM)</label>
+          <input type="number" id="erEis" step="0.01" min="0" value="0">
+        </div>
+        <div>
+          <label>HRDF (RM)</label>
+          <input type="number" id="erHrdf" step="0.01" min="0" value="0">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Payment</legend>
+      <label class="first">Pay from bank</label>
+      <select id="bankAccountId"></select>
+      <label class="check-row"><input type="checkbox" id="paidNow" checked> Paid now (credit bank). Uncheck to leave as payable.</label>
+      <label>Notes (optional)</label>
+      <textarea id="notes" placeholder="Shown on the document"></textarea>
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary-btn" id="downloadBtn">Download PDF</button>
+      <button type="button" class="primary-btn print-btn" id="printBtn">Print preview</button>
+      <div class="save-row">
+        <button id="saveDraftBtn">Save draft</button>
+        <button id="loadDraftBtn">Load draft</button>
+        <button id="resetBtn">Reset form</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+      <p class="hint">Downloading the PDF saves the document number and posts it to the Smart Ledger.</p>
+    </div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="doc-sheet" id="payslip-sheet">
+      <div class="doc-header">
+        <div>
+          <img src="../../assets/logo.png" alt="ChendAwan">
+          <div class="doc-brand-name" id="pv-companyName"></div>
+          <div class="doc-brand-tag" id="pv-companyTag"></div>
+        </div>
+        <div class="doc-title">
+          <div class="big" id="pv-docTitle">PAYSLIP</div>
+          <div class="small" id="pv-companyShort"></div>
+        </div>
+      </div>
+      <hr class="rule">
+
+      <div class="meta-grid">
+        <div class="bill-to">
+          <div class="eyebrow" id="pv-payeeEyebrow">EMPLOYEE</div>
+          <div class="name" id="pv-workerName">&nbsp;</div>
+          <div class="line" id="pv-workerIdLine"></div>
+          <div class="line" id="pv-workerNric"></div>
+          <div class="line" id="pv-workerPosition"></div>
+        </div>
+        <div class="meta-right">
+          <div><span class="lab">Document No. </span><span class="val" id="pv-pslNo"></span></div>
+          <div><span class="lab">Month </span><span class="val" id="pv-month"></span></div>
+          <div><span class="lab">Pay Period </span><span class="val" id="pv-period"></span></div>
+          <div><span class="lab">Payment Date </span><span class="val" id="pv-payDate"></span></div>
+        </div>
+      </div>
+
+      <div class="proj-line"><span class="lab">Project: </span><span id="pv-projName"></span></div>
+
+      <table class="items pay-table">
+        <thead>
+          <tr>
+            <th>Earnings</th>
+            <th class="num">Amount (RM)</th>
+          </tr>
+        </thead>
+        <tbody id="pv-earnBody"></tbody>
+        <tbody>
+          <tr class="totals-row"><td class="lab">Gross</td><td class="val" id="pv-gross">RM 0.00</td></tr>
+        </tbody>
+      </table>
+
+      <table class="items pay-table">
+        <thead>
+          <tr>
+            <th>Deductions</th>
+            <th class="num">Amount (RM)</th>
+          </tr>
+        </thead>
+        <tbody id="pv-dedBody"></tbody>
+        <tbody>
+          <tr class="totals-row"><td class="lab">Total deductions</td><td class="val" id="pv-dedTotal">RM 0.00</td></tr>
+          <tr class="totals-row total-due-row"><td class="lab" id="pv-netLabel">NET PAY</td><td class="val" id="pv-net">RM 0.00</td></tr>
+        </tbody>
+      </table>
+
+      <div id="pv-employerBlock">
+        <div class="section-heading">Employer statutory (for reference — not deducted from net)</div>
+        <table class="bank-table">
+          <tr><td class="lab">EPF (employer):</td><td class="val" id="pv-erEpf"></td></tr>
+          <tr><td class="lab">SOCSO (employer):</td><td class="val" id="pv-erSocso"></td></tr>
+          <tr><td class="lab">EIS (employer):</td><td class="val" id="pv-erEis"></td></tr>
+          <tr><td class="lab">HRDF:</td><td class="val" id="pv-erHrdf"></td></tr>
+        </table>
+      </div>
+
+      <div class="section-heading">Bank details</div>
+      <table class="bank-table">
+        <tr><td class="lab">Bank:</td><td class="val" id="pv-bankName"></td></tr>
+        <tr><td class="lab">Account no.:</td><td class="val" id="pv-bankAcc"></td></tr>
+      </table>
+
+      <div class="section-body" id="pv-notes"></div>
+
+      <div class="sig-block">
+        <div class="thanks" id="pv-thanks">This payslip is issued by TEAM CHENDAWAN VENTURES.</div>
+        <div class="prep-name" id="pv-prepName"></div>
+        <div class="prep-role" id="pv-prepTitle"></div>
+        <div class="prep-contact" id="pv-prepContact"></div>
+        <div class="prep-ssm" id="pv-ssmNo"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="../../js/firebase-config.js"></script>
+<script src="../../js/firebase.js"></script>
+<script src="../../js/company-defaults.js"></script>
+<script src="../../js/service-codes.js"></script>
+<script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
+<script src="../../js/workers.js"></script>
+<script src="../../js/projects.js"></script>
+<script src="../../js/ledger.js"></script>
+<script src="js/payslip.js"></script>
+</body>
+</html>

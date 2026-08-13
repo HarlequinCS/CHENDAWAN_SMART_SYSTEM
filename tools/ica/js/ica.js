@@ -6,12 +6,19 @@ window.TCVLegal.boot({
   noId: 'docNo',
   hintId: 'docNoHint',
   relatedId: 'relatedNo',
+  workerEmptyHint:
+    'No contractor selected. <a href="../../tools/workforce/">Register the contractor</a> first.',
+  workerFilterFn: function (w) {
+    return w.type !== 'employee';
+  },
   fieldIds: [
     'serviceCode',
     'jobNo',
     'issueNo',
     'docNo',
     'relatedNo',
+    'workerId',
+    'clientId',
     'clientName',
     'clientReg',
     'clientAddr',

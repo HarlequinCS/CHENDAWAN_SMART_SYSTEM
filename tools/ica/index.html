@@ -22,20 +22,21 @@
 
     <fieldset>
       <legend>Document Number</legend>
-      <label class="first">Primary service code</label>
+      <label class="first">Job / project</label>
+      <select id="projectId"></select>
+      <p class="field-hint"><a href="../../tools/projects/">Create a project</a> to get a job number. Issue is assigned when you download the PDF.</p>
+      <input type="hidden" id="docYear">
+      <label>Primary service code</label>
       <select id="serviceCode"></select>
       <p class="field-hint">Numbers follow the service code, e.g. ICA/2026/001-WSD-100/01</p>
       <div class="row2">
         <div>
           <label>Job no.</label>
-          <div class="inline-row">
-            <input type="number" id="jobNo" min="1" step="1">
-            <button type="button" class="ghost-btn" id="nextJobBtn">Next</button>
-          </div>
+          <input type="number" id="jobNo" min="1" step="1" readonly>
         </div>
         <div>
           <label>Issue</label>
-          <input type="number" id="issueNo" min="1" step="1" value="1">
+          <input type="number" id="issueNo" min="1" step="1" value="1" readonly>
         </div>
       </div>
       <label>Agreement no.</label>
@@ -47,12 +48,18 @@
 
     <fieldset>
       <legend>Contractor</legend>
-      <label class="first">Name</label>
-      <input type="text" id="clientName" placeholder="Contractor / freelancer name">
-      <label>NRIC no.</label>
-      <input type="text" id="clientReg" placeholder="e.g. 041212-01-0085">
-      <label>Address</label>
-      <input type="text" id="clientAddr" placeholder="Full address">
+      <label class="first">Workforce register</label>
+      <select id="workerId"></select>
+      <p class="field-hint"><a href="../../tools/workforce/">Register the contractor</a> as an independent contractor or freelancer.</p>
+      <div class="client-summary is-empty" id="workerSummary"></div>
+      <input type="hidden" id="clientId">
+      <input type="hidden" id="clientName">
+      <input type="hidden" id="clientAttn">
+      <input type="hidden" id="clientAddr">
+      <input type="hidden" id="clientReg">
+      <input type="hidden" id="clientSignName">
+      <input type="hidden" id="clientSignTitle">
+      <input type="hidden" id="clientType">
     </fieldset>
 
     <fieldset>
@@ -99,7 +106,7 @@
   </div>
 
   <div class="preview-panel">
-    <div class="doc-sheet" id="ica-sheet">
+    <div class="doc-sheet" id="ica-sheet" data-default-client-type="individual">
       <div class="doc-header">
         <div>
           <img src="../../assets/logo.png" alt="ChendAwan">
@@ -131,9 +138,11 @@
       </div>
       <div class="party-block">
         <div class="eyebrow">CONTRACTOR</div>
-        <div class="name" data-bind="clientName" data-ph="[Contractor / Freelancer Name]">[Contractor / Freelancer Name]</div>
-        <div class="line">NRIC No. <span data-bind="clientReg" data-ph="[IC Number]">[IC Number]</span></div>
-        <div class="line">Of <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
+        <div class="name" data-bind="clientName" data-ph="[Contractor name]">[Contractor name]</div>
+        <div class="line" data-show-type="individual">NRIC No. <span data-bind="clientReg" data-ph="[IC Number]">[IC Number]</span></div>
+        <div class="line" data-show-type="business">Registration No. <span data-bind="clientReg" data-ph="[SSM No.]">[SSM No.]</span></div>
+        <div class="line" data-show-type="individual">Of <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
+        <div class="line" data-show-type="business">Having its principal place of business at <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
       </div>
       <p class="legal-intro">The Company and the Contractor are hereinafter collectively referred to as the “Parties” and individually as a “Party”.</p>
 
@@ -264,7 +273,8 @@
         <div class="sig-card">
           <div class="sig-label">Acknowledged and Accepted by Contractor</div>
           <div class="row">Name: <span data-bind="clientName" data-ph="[Contractor Name]">[Contractor Name]</span></div>
-          <div class="row">NRIC No.: <span data-bind="clientReg" data-ph="[IC Number]">[IC Number]</span></div>
+          <div class="row" data-show-type="individual">NRIC No.: <span data-bind="clientReg" data-ph="[IC Number]">[IC Number]</span></div>
+          <div class="row" data-show-type="business">Registration No.: <span data-bind="clientReg" data-ph="[SSM No.]">[SSM No.]</span></div>
           <div class="row">Date: <span data-bind="signDate" data-format="date" data-ph="[Date]">[Date]</span></div>
           <div class="sig-line">Signature</div>
         </div>
@@ -272,10 +282,17 @@
     </div>
   </div>
 </div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="../../js/firebase-config.js"></script>
+<script src="../../js/firebase.js"></script>
 <script src="../../js/company-defaults.js"></script>
 <script src="../../js/service-codes.js"></script>
 <script src="../../js/doc-common.js"></script>
 <script src="../../js/doc-numbers.js"></script>
+<script src="../../js/workers.js"></script>
+<script src="../../js/projects.js"></script>
 <script src="../../js/legal-common.js"></script>
 <script src="js/ica.js"></script>
 </body>

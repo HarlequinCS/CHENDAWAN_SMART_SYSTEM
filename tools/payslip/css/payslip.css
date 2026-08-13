@@ -1,0 +1,18 @@
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0 8px;
+  color: var(--ink);
+}
+
+.check-row input {
+  width: auto;
+  margin: 0;
+}
+
+.pay-table {
+  margin-top: 14px;
+}
