@@ -273,30 +273,50 @@ window.TCVDoc = (function () {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  function selectedIssuedId(selectId) {
-    const sel = document.getElementById(selectId);
-    if (!sel || sel.selectedIndex < 0) return '';
-    const opt = sel.options[sel.selectedIndex];
-    return (opt && opt.getAttribute('data-id')) || '';
+  function selectedIssuedId(inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return '';
+    const value = String(el.value || '').trim();
+    if (!value) return '';
+    if (el.tagName === 'SELECT') {
+      if (el.selectedIndex < 0) return '';
+      const opt = el.options[el.selectedIndex];
+      return (opt && opt.getAttribute('data-id')) || '';
+    }
+    const list = el.getAttribute('list') ? document.getElementById(el.getAttribute('list')) : null;
+    if (!list) return '';
+    const opts = list.querySelectorAll('option');
+    for (let i = 0; i < opts.length; i++) {
+      if (String(opts[i].value || '').trim() === value) return opts[i].getAttribute('data-id') || '';
+    }
+    return '';
   }
 
   async function fillIssuedSelect(opts) {
     opts = opts || {};
-    const sel = document.getElementById(opts.selectId);
-    if (!sel) return [];
+    const el = document.getElementById(opts.selectId);
+    if (!el) return [];
+    const listId = el.getAttribute('list');
+    const list = listId ? document.getElementById(listId) : el.tagName === 'SELECT' ? el : null;
+    if (!list) return [];
     const projectId =
       opts.projectId != null
         ? opts.projectId
         : ((document.getElementById('projectId') || {}).value || '');
     const types = opts.types || [];
-    const current = opts.value !== undefined ? opts.value : sel.value;
-    const emptyLabel = opts.emptyLabel || 'Select…';
-    sel.innerHTML = '';
-    const empty = document.createElement('option');
-    empty.value = '';
-    empty.textContent = emptyLabel;
-    sel.appendChild(empty);
-    if (!projectId || !window.TCVProjects || !window.TCVProjects.listDocuments) return [];
+    const current = opts.value !== undefined ? opts.value : el.value;
+    const isSelect = list.tagName === 'SELECT';
+    list.innerHTML = '';
+    if (isSelect) {
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = opts.emptyLabel || 'Select…';
+      list.appendChild(empty);
+    }
+    if (!projectId || !window.TCVProjects || !window.TCVProjects.listDocuments) {
+      if (isSelect && current) el.value = current;
+      return [];
+    }
     let docs = [];
     try {
       docs = await window.TCVProjects.listDocuments(projectId);
@@ -308,20 +328,12 @@ window.TCVDoc = (function () {
       const opt = document.createElement('option');
       opt.value = d.number || '';
       opt.setAttribute('data-id', d.id || '');
-      opt.textContent =
+      const label =
         typeof opts.labelFn === 'function' ? opts.labelFn(d) || d.number || d.type : d.number || d.type;
-      sel.appendChild(opt);
+      opt.textContent = label;
+      list.appendChild(opt);
     });
-    if (current) {
-      const found = Array.prototype.some.call(sel.options, (o) => o.value === current);
-      if (!found) {
-        const extra = document.createElement('option');
-        extra.value = current;
-        extra.textContent = current;
-        sel.appendChild(extra);
-      }
-      sel.value = current;
-    }
+    if (current) el.value = current;
     return rows;
   }
 

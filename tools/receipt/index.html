@@ -65,11 +65,11 @@
         </div>
         <div>
           <label>Reference invoice</label>
-          <select id="refInvoice">
-            <option value="">No invoice</option>
-          </select>
+          <input type="text" id="refInvoice" list="refInvoiceList" autocomplete="off" placeholder="Select or type">
+          <datalist id="refInvoiceList"></datalist>
         </div>
       </div>
+      <p class="field-hint">Pick an issued invoice, or type a custom reference.</p>
     </fieldset>
 
     <fieldset>

@@ -305,8 +305,8 @@ function applyKindUi() {
   setText(
     'quoteHint',
     cn
-      ? 'Issued invoices for this project. Remaining AR is credited by default.'
-      : 'Pick an issued quotation for this project, or leave blank.'
+      ? 'Pick an issued invoice or type the invoice number. Remaining AR is credited when the invoice is in the books.'
+      : 'Pick an issued quotation, or type a custom reference.'
   );
   setText('kindHint', cn
     ? 'Select the invoice to reverse. Remaining AR is filled in; reduce lines for a partial credit.'
@@ -535,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('downloadBtn').addEventListener('click', async () => {
         try {
           if (isCreditNote() && !document.getElementById('invQuote').value.trim()) {
-            D.setStatus('Select the invoice this credit note is against.');
+            D.setStatus('Select or enter the invoice this credit note is against.');
             return;
           }
           const decision = await issueGate.beforeDownload({

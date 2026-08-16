@@ -79,10 +79,9 @@
         </div>
       </div>
       <label id="quoteLabel">Reference quotation no.</label>
-      <select id="invQuote">
-        <option value="">No quotation</option>
-      </select>
-      <p class="field-hint" id="quoteHint">Pick an issued quotation for this project, or leave blank.</p>
+      <input type="text" id="invQuote" list="invQuoteList" autocomplete="off" placeholder="Select from list or type a custom no.">
+      <datalist id="invQuoteList"></datalist>
+      <p class="field-hint" id="quoteHint">Pick an issued quotation, or type a custom reference.</p>
       <input type="hidden" id="sourceInvId" value="">
     </fieldset>
 
