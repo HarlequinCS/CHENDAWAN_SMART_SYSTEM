@@ -25,21 +25,6 @@ window.TCVLegal = (function () {
     return el ? el.value.trim() : '';
   }
 
-  function formatLegalText() {
-    document.querySelectorAll('.legal-clause p').forEach((p) => {
-      p.classList.remove('subclause', 'defn', 'recital', 'legal-field');
-      if (p.classList.contains('subhead') || p.id === 'pv-privacyContact') return;
-      if (p.hasAttribute('data-bind')) {
-        p.classList.add('legal-field');
-        return;
-      }
-      const text = (p.textContent || '').trim();
-      if (/^\d+\.\d+/.test(text)) p.classList.add('subclause');
-      else if (/^(WHEREAS|AND WHEREAS|NOW,\s*THEREFORE)/i.test(text)) p.classList.add('recital');
-      else if (/^["“]/.test(text)) p.classList.add('defn');
-    });
-  }
-
   function fill() {
     document.querySelectorAll('[data-bind]').forEach((el) => {
       const raw = val(el.dataset.bind);
@@ -57,7 +42,9 @@ window.TCVLegal = (function () {
     document.querySelectorAll('[data-show-type]').forEach((el) => {
       el.hidden = el.getAttribute('data-show-type') !== type;
     });
-    formatLegalText();
+    if (window.TCVDoc && window.TCVDoc.keepHeadingsWithContent) {
+      window.TCVDoc.keepHeadingsWithContent(sheet);
+    }
   }
 
   function fieldIds(opts) {
@@ -202,7 +189,7 @@ window.TCVLegal = (function () {
       if (brandTag) brandTag.textContent = COMPANY.tagline || '';
       if (brandShort) brandShort.textContent = COMPANY.shortName || '';
       fillCompanyParty();
-      formatLegalText();
+      if (D.keepHeadingsWithContent) D.keepHeadingsWithContent(document.querySelector('.doc-sheet'));
 
       const start =
         window.TCVFirebase && window.TCVFirebase.afterAuth
@@ -316,5 +303,5 @@ window.TCVLegal = (function () {
     });
   }
 
-  return { fill, boot, val, formatLegalText };
+  return { fill, boot, val };
 })();

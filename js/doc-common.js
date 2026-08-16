@@ -120,22 +120,13 @@ window.TCVDoc = (function () {
           sheet.querySelectorAll('.party-grid').forEach((n) => asTable(n, '14px 0', 'top'));
           sheet.querySelectorAll('.sig-grid').forEach((n) => asTable(n, '20px 0', 'top'));
           sheet.querySelectorAll('.proj-line, .meta-right > div').forEach((n) => asTable(n, '0', 'baseline'));
-          sheet.querySelectorAll('.legal-clause ul').forEach((n) => {
-            n.style.listStyleType = 'lower-alpha';
-            n.style.paddingLeft = '32px';
-            n.style.margin = '6px 0 12px';
-          });
-          sheet.querySelectorAll('.notes-list').forEach((n) => {
-            n.style.listStyleType = 'decimal';
-            n.style.paddingLeft = '22px';
-          });
-          sheet.querySelectorAll('.subclause, .defn, .subhead').forEach((n) => {
-            n.style.paddingLeft = '36px';
-            n.style.textIndent = '-36px';
-          });
+          keepHeadingsWithContent(sheet);
         },
       },
-      pagebreak: { mode: ['css'] },
+      pagebreak: {
+        mode: ['css'],
+        avoid: ['.keep-with-heading', '.legal-clause h2', '.section-heading', '.subhead', '.sig-grid'],
+      },
       jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
     };
   }
@@ -318,6 +309,24 @@ window.TCVDoc = (function () {
     };
   }
 
+  function keepHeadingsWithContent(root) {
+    const scope = root || document.querySelector('.doc-sheet') || document;
+    const headings = Array.prototype.slice.call(
+      scope.querySelectorAll('.legal-clause h2, .legal-clause .subhead, .section-heading')
+    );
+    headings.reverse().forEach((heading) => {
+      if (heading.parentNode && heading.parentNode.classList.contains('keep-with-heading')) return;
+      const next = heading.nextElementSibling;
+      if (!next) return;
+      if (next.matches && next.matches('h2, .section-heading, .sig-grid, .sig-block')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'keep-with-heading';
+      heading.parentNode.insertBefore(wrap, heading);
+      wrap.appendChild(heading);
+      wrap.appendChild(next);
+    });
+  }
+
   function bindLivePreview(renderFn) {
     const formPanel = document.querySelector('.form-panel');
     if (!formPanel) return;
@@ -327,6 +336,7 @@ window.TCVDoc = (function () {
     formPanel.addEventListener('change', (e) => {
       if (e.target.matches('select')) renderFn();
     });
+    keepHeadingsWithContent();
   }
 
   function issueFingerprint(value) {
@@ -682,6 +692,7 @@ window.TCVDoc = (function () {
     companyDefaults,
     bindLivePreview,
     bindDraftActions,
+    keepHeadingsWithContent,
     createIssueGate,
     loadIssuedIfPresent,
     downloadBlob,

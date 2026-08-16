@@ -38,40 +38,20 @@
   margin: 0 0 10px;
   padding-bottom: 5px;
   border-bottom: 1px solid var(--border);
+  page-break-after: avoid;
+  break-after: avoid-page;
 }
 
 .legal-clause p {
   margin: 0 0 9px;
 }
 
-.legal-clause p.subhead,
-.legal-clause p.subclause,
-.legal-clause p.defn {
-  padding-left: 36px;
-  text-indent: -36px;
-}
-
 .legal-clause p.subhead {
   font-weight: 800;
   margin: 12px 0 4px;
   color: var(--accent-dark);
-}
-
-.legal-clause p.recital {
-  margin: 0 0 8px 8px;
-  padding: 0 0 0 12px;
-  border-left: 2px solid rgba(21, 96, 130, 0.28);
-  font-style: italic;
-}
-
-.legal-clause p.legal-field {
-  white-space: pre-wrap;
-  text-indent: 0;
-  padding: 8px 12px;
-  margin: 0 0 12px;
-  background: var(--light-fill);
-  border-left: 3px solid var(--accent);
-  line-height: 1.55;
+  page-break-after: avoid;
+  break-after: avoid-page;
 }
 
 .legal-clause p[data-bind] {
@@ -80,31 +60,17 @@
 
 .legal-clause ul,
 .legal-clause ol {
-  margin: 6px 0 12px;
-  padding-left: 32px;
-}
-
-.legal-clause ul {
-  list-style-type: lower-alpha;
-}
-
-.legal-clause ol {
-  list-style-type: decimal;
+  margin: 4px 0 10px;
+  padding-left: 18px;
 }
 
 .legal-clause li {
-  margin: 0 0 6px;
-  padding-left: 6px;
+  margin-bottom: 4px;
 }
 
-.legal-clause li:last-child {
-  margin-bottom: 2px;
-}
-
-.legal-clause #pv-privacyContact {
-  padding-left: 0;
-  text-indent: 0;
-  line-height: 1.7;
+.keep-with-heading {
+  page-break-inside: avoid;
+  break-inside: avoid-page;
 }
 
 .sig-grid {
