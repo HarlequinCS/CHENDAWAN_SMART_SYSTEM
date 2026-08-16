@@ -586,5 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     })
-    .catch(() => {});
+    .catch((err) => {
+      D.setStatus((err && err.message) || 'Could not load jobs, clients, or workers.');
+    });
 });

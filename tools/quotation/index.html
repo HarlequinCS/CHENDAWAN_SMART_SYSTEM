@@ -27,7 +27,7 @@
     <fieldset>
       <legend>Bill To</legend>
       <label class="first">Registered client</label>
-      <select id="clientId"></select>
+      <select id="clientId"><option value="">Select a client…</option></select>
       <p class="field-hint"><a href="../../tools/clients/">Register or edit clients</a></p>
       <div class="client-summary is-empty" id="clientSummary"></div>
       <input type="hidden" id="clientName">
@@ -42,11 +42,11 @@
     <fieldset>
       <legend>Quotation Details</legend>
       <label class="first">Job / project</label>
-      <select id="projectId"></select>
+      <select id="projectId"><option value="">Select a project…</option></select>
       <p class="field-hint"><a href="../../tools/projects/">Create a project</a> to get a job number. Issue is assigned when you download the PDF.</p>
       <input type="hidden" id="docYear">
       <label>Primary service code</label>
-      <select id="serviceCode"></select>
+      <select id="serviceCode"><option value="">— Select service code —</option></select>
       <p class="field-hint">Numbers follow the project, e.g. QUO/2026/001-WSD-100/01</p>
       <div class="row2">
         <div>

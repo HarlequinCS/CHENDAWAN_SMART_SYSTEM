@@ -162,8 +162,23 @@ window.TCVNumbers = (function () {
     let prefix = opts.prefix;
     let issuedLock = false;
 
-    if (serviceEl && !serviceEl.options.length) {
-      serviceEl.innerHTML = window.tcvServiceOptionsHtml('');
+    if (!noEl || !serviceEl || !jobEl) {
+      return {
+        refresh: function () {},
+        setPrefix: function (next) {
+          prefix = next;
+        },
+        lockIssued: function (on) {
+          issuedLock = !!on;
+        },
+        isIssuedLocked: function () {
+          return issuedLock;
+        },
+        commit: function () {},
+      };
+    }
+    if (serviceEl.options.length < 2 && window.tcvServiceOptionsHtml) {
+      serviceEl.innerHTML = window.tcvServiceOptionsHtml(serviceEl.value);
     }
 
     function refresh() {

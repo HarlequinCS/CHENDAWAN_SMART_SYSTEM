@@ -382,5 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return fillBankSelect();
       });
     })
-    .catch(() => {});
+    .catch((err) => {
+      D.setStatus((err && err.message) || 'Could not load jobs or workers.');
+    });
 });

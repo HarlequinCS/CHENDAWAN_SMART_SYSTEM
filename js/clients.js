@@ -143,7 +143,10 @@ window.TCVClients = (function () {
   function optionsHtml(selectedId) {
     const items = list();
     let html = '<option value="">Select a client…</option>';
-    if (!items.length) return html;
+    if (!items.length) {
+      html += '<option value="" disabled>No clients yet — register one first</option>';
+      return html;
+    }
     const groups = [
       { type: 'business', label: 'Businesses' },
       { type: 'individual', label: 'Individuals' },

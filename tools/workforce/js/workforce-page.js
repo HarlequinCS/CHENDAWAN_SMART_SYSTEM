@@ -187,5 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyTypeUi();
       renderList();
     })
-    .catch(() => {});
+    .catch((err) => {
+      D.setStatus((err && err.message) || 'Could not load workers.');
+    });
 });

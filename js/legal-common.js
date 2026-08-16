@@ -187,15 +187,11 @@ window.TCVLegal = (function () {
       if (brandShort) brandShort.textContent = COMPANY.shortName || '';
       fillCompanyParty();
 
-      const start = window.TCVFirebase && window.TCVFirebase.ready ? window.TCVFirebase.ready : Promise.resolve();
+      const start =
+        window.TCVFirebase && window.TCVFirebase.afterAuth
+          ? window.TCVFirebase.afterAuth()
+          : Promise.resolve();
       start
-        .then(() => {
-          const loads = [];
-          if (window.TCVClients) loads.push(window.TCVClients.refresh());
-          if (window.TCVWorkers) loads.push(window.TCVWorkers.refresh());
-          if (window.TCVProjects) loads.push(window.TCVProjects.refresh());
-          return Promise.all(loads);
-        })
         .then(() => {
           issueGate = D.createIssueGate({
             onReset: function () {
@@ -297,7 +293,9 @@ window.TCVLegal = (function () {
             }
           });
         })
-        .catch(() => {});
+        .catch((err) => {
+          D.setStatus((err && err.message) || 'Could not load jobs, clients, or workers.');
+        });
     });
   }
 

@@ -167,6 +167,10 @@ window.TCVWorkers = (function () {
     let items = list();
     if (typeof filterFn === 'function') items = items.filter(filterFn);
     let html = '<option value="">Select a worker…</option>';
+    if (!items.length) {
+      html += '<option value="" disabled>No matching workers yet — register one first</option>';
+      return html;
+    }
     const groups = [
       { type: 'employee', label: 'Employees' },
       { type: 'contractor', label: 'Independent contractors' },

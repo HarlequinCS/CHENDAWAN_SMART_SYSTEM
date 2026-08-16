@@ -341,5 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       renderList();
     })
-    .catch(() => {});
+    .catch((err) => {
+      D.setStatus((err && err.message) || 'Could not load clients.');
+    });
 });

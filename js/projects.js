@@ -25,14 +25,20 @@ window.TCVProjects = (function () {
   }
 
   function label(p) {
-    const no = window.TCVNumbers.build({
-      prefix: 'JOB',
-      year: p.year,
-      job: p.jobNo,
-      code: p.serviceCode,
-      issue: 1,
-    }).replace(/^JOB\//, '');
-    return (p.name || 'Untitled') + '  ·  ' + (no || p.jobNo);
+    let no = '';
+    try {
+      if (window.TCVNumbers && window.TCVNumbers.build) {
+        no = window.TCVNumbers.build({
+          prefix: 'JOB',
+          year: p.year,
+          job: p.jobNo,
+          code: p.serviceCode,
+          issue: 1,
+        }).replace(/^JOB\//, '');
+      }
+    } catch (e) {}
+    const fallback = p.jobNo ? String(p.jobNo) : '';
+    return (p.name || 'Untitled') + (no || fallback ? '  ·  ' + (no || fallback) : '');
   }
 
   async function refresh() {
@@ -125,7 +131,7 @@ window.TCVProjects = (function () {
     return (parseInt(issues[prefix], 10) || 0) + 1;
   }
 
-  function applyToForm(project, prefix) {
+  function applyToForm(project, prefix, opts) {
     const set = (id, v) => {
       const el = document.getElementById(id);
       if (el) el.value = v == null ? '' : v;
@@ -142,21 +148,59 @@ window.TCVProjects = (function () {
     if (!issuedLock) set('issueNo', String(peekIssue(project, prefix)));
     const projName = document.getElementById('projName');
     if (projName && !projName.value.trim() && project.name) projName.value = project.name;
+    const forceClient = opts && opts.forceClient;
+    if (project.clientId) {
+      const clientEl = document.getElementById('clientId');
+      if (clientEl && (forceClient || !clientEl.value) && clientEl.value !== project.clientId) {
+        clientEl.value = project.clientId;
+        if (clientEl.tagName === 'SELECT' && window.TCVClients && window.TCVClients.syncSelected) {
+          window.TCVClients.syncSelected();
+        }
+      }
+    }
     if (window.TCVNumbers) window.TCVNumbers.applyServiceToForm(project.serviceCode);
   }
 
-  function optionsHtml(clientId, selectedId, requireClient) {
-    const rows = requireClient && !clientId ? [] : listByClient(clientId);
+  function optionTag(p, selectedId) {
+    return (
+      '<option value="' +
+      esc(p.id) +
+      '"' +
+      (p.id === selectedId ? ' selected' : '') +
+      '>' +
+      esc(label(p)) +
+      '</option>'
+    );
+  }
+
+  function optionsHtml(clientId, selectedId) {
+    const all = list();
     let html = '<option value="">Select a project…</option>';
-    rows.forEach((p) => {
-      html +=
-        '<option value="' +
-        esc(p.id) +
-        '"' +
-        (p.id === selectedId ? ' selected' : '') +
-        '>' +
-        esc(label(p)) +
-        '</option>';
+    if (!all.length) {
+      html += '<option value="" disabled>No projects yet — create one first</option>';
+      return html;
+    }
+    if (clientId) {
+      const mine = all.filter((p) => p.clientId === clientId);
+      const others = all.filter((p) => p.clientId !== clientId);
+      if (mine.length) {
+        html += '<optgroup label="This client">';
+        mine.forEach((p) => {
+          html += optionTag(p, selectedId);
+        });
+        html += '</optgroup>';
+      }
+      if (others.length) {
+        html += '<optgroup label="Other jobs">';
+        others.forEach((p) => {
+          html += optionTag(p, selectedId);
+        });
+        html += '</optgroup>';
+      }
+      return html;
+    }
+    all.forEach((p) => {
+      html += optionTag(p, selectedId);
     });
     return html;
   }
@@ -166,10 +210,9 @@ window.TCVProjects = (function () {
     const sel = document.getElementById(bound.projectSelectId);
     if (!sel) return;
     const clientEl = bound.clientSelectId ? document.getElementById(bound.clientSelectId) : null;
-    const clientId = clientEl ? clientEl.value : '';
-    const requireClient = !!clientEl;
+    const clientId = clientEl && clientEl.tagName === 'SELECT' ? clientEl.value : '';
     const current = sel.value;
-    sel.innerHTML = optionsHtml(clientId, current, requireClient);
+    sel.innerHTML = optionsHtml(clientId, current);
     if (current && Array.prototype.some.call(sel.options, (o) => o.value === current)) {
       sel.value = current;
     } else {
@@ -182,8 +225,9 @@ window.TCVProjects = (function () {
 
   function bindPicker(opts) {
     opts = opts || {};
-    const clientEl = document.getElementById(opts.clientSelectId || 'clientId');
-    const defaultClientSelect = clientEl && clientEl.tagName === 'SELECT' ? 'clientId' : null;
+    const defaultClientEl = document.getElementById('clientId');
+    const defaultClientSelect =
+      defaultClientEl && defaultClientEl.tagName === 'SELECT' ? 'clientId' : null;
     bound = {
       projectSelectId: opts.projectSelectId || 'projectId',
       clientSelectId: Object.prototype.hasOwnProperty.call(opts, 'clientSelectId')
@@ -195,7 +239,7 @@ window.TCVProjects = (function () {
     const sel = document.getElementById(bound.projectSelectId);
     if (!sel) return bound;
     sel.addEventListener('change', () => {
-      applyToForm(get(sel.value), bound.prefix);
+      applyToForm(get(sel.value), bound.prefix, { forceClient: true });
       if (typeof bound.onChange === 'function') bound.onChange();
     });
     syncSelected();

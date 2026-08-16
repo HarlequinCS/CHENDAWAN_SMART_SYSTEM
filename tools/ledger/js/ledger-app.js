@@ -1800,7 +1800,9 @@ document.addEventListener('DOMContentLoaded', () => {
     : Promise.resolve();
   start
     .then(() => reload())
-    .catch(() => {});
+    .catch((err) => {
+      D.setStatus((err && err.message) || 'Could not load the ledger.');
+    });
   window.addEventListener('hashchange', () => {
     const view = currentView();
     setNav(view);

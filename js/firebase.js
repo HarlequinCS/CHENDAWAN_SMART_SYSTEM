@@ -194,9 +194,10 @@ window.TCVFirebase = (function () {
   async function afterAuth(fn) {
     await ready;
     const loads = [];
-    if (window.TCVClients && window.TCVClients.refresh) loads.push(window.TCVClients.refresh());
-    if (window.TCVWorkers && window.TCVWorkers.refresh) loads.push(window.TCVWorkers.refresh());
-    if (window.TCVProjects && window.TCVProjects.refresh) loads.push(window.TCVProjects.refresh());
+    const safe = (p) => Promise.resolve(p).catch(() => null);
+    if (window.TCVClients && window.TCVClients.refresh) loads.push(safe(window.TCVClients.refresh()));
+    if (window.TCVWorkers && window.TCVWorkers.refresh) loads.push(safe(window.TCVWorkers.refresh()));
+    if (window.TCVProjects && window.TCVProjects.refresh) loads.push(safe(window.TCVProjects.refresh()));
     await Promise.all(loads);
     if (typeof fn === 'function') return fn();
   }
