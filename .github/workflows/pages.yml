@@ -1,19 +1,24 @@
-name: Stamp Pages assets
+name: Deploy GitHub Pages
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: stamp-assets
-  cancel-in-progress: false
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  stamp:
-    if: ${{ !contains(github.event.head_commit.message, 'stamp assets') }}
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,19 +27,29 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Stamp HTML asset URLs with this commit
+      - name: Prepare a fresh site copy
+        run: |
+          mkdir -p dist
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'dist' \
+            --exclude 'scripts' \
+            --exclude '.pdf-preview' \
+            --exclude 'ChendAwan.md' \
+            --exclude '*.pdf' \
+            ./ dist/
+
+      - name: Stamp CSS, JS, and images with this commit
         env:
           GITHUB_SHA: ${{ github.sha }}
-        run: node scripts/cache-bust.js .
+        run: node scripts/cache-bust.js dist
 
-      - name: Commit and push stamped HTML
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -u
-          if git diff --staged --quiet; then
-            echo "No HTML URL changes"
-            exit 0
-          fi
-          git commit -m "chore: stamp assets for GitHub Pages"
-          git push
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

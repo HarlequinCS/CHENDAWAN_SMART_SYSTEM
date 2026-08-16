@@ -54,9 +54,26 @@ window.TCVDoc = (function () {
     return state;
   }
 
+  function asTable(node, spacing, vAlign) {
+    if (!node) return;
+    const count = node.children.length || 1;
+    node.style.display = 'table';
+    node.style.width = '100%';
+    node.style.maxWidth = '100%';
+    node.style.tableLayout = 'fixed';
+    node.style.borderCollapse = 'separate';
+    node.style.borderSpacing = spacing || '0';
+    Array.prototype.forEach.call(node.children, function (child) {
+      child.style.display = 'table-cell';
+      child.style.verticalAlign = vAlign || 'top';
+      child.style.width = 100 / count + '%';
+      child.style.marginLeft = '0';
+    });
+  }
+
   function pdfOptions(el, filename) {
     const widthPx = 794;
-    const heightPx = Math.max(el.scrollHeight, el.offsetHeight, 1123);
+    const heightPx = Math.max(el.scrollHeight, el.offsetHeight, 1);
     return {
       margin: 0,
       filename: filename || 'document.pdf',
@@ -66,10 +83,20 @@ window.TCVDoc = (function () {
         useCORS: true,
         scrollX: 0,
         scrollY: 0,
+        x: 0,
+        y: 0,
+        width: widthPx,
         windowWidth: widthPx,
         windowHeight: heightPx,
         backgroundColor: '#ffffff',
         onclone: function (clonedDoc) {
+          clonedDoc.documentElement.style.background = '#fff';
+          clonedDoc.body.style.margin = '0';
+          clonedDoc.body.style.padding = '0';
+          clonedDoc.body.style.background = '#fff';
+          clonedDoc.querySelectorAll('.app, .form-panel').forEach((n) => {
+            n.style.display = 'none';
+          });
           const sheet = clonedDoc.getElementById(el.id) || clonedDoc.querySelector('.doc-sheet');
           if (!sheet) return;
           const wrap = sheet.closest('.report-print');
@@ -81,36 +108,21 @@ window.TCVDoc = (function () {
           }
           sheet.style.width = widthPx + 'px';
           sheet.style.maxWidth = widthPx + 'px';
+          sheet.style.minHeight = '0';
           sheet.style.boxSizing = 'border-box';
           sheet.style.overflow = 'visible';
           sheet.style.backgroundImage = 'none';
           sheet.style.height = 'auto';
           sheet.style.padding = '68px 68px 83px';
-          [
-            '.doc-header',
-            '.meta-grid',
-            '.doc-ref-card',
-            '.party-grid',
-            '.sig-grid',
-            '.proj-strip',
-            '.proj-line',
-          ].forEach((sel) => {
-            sheet.querySelectorAll(sel).forEach((n) => {
-              n.style.display = 'flex';
-              n.style.flexWrap = 'nowrap';
-              n.style.maxWidth = '100%';
-            });
-          });
-          ['.meta-grid', '.doc-ref-card', '.party-grid', '.sig-grid', '.doc-header'].forEach((sel) => {
-            sheet.querySelectorAll(sel).forEach((n) => {
-              n.style.flexDirection = 'row';
-              n.style.alignItems = sel === '.doc-header' ? 'flex-end' : 'stretch';
-              n.style.width = '100%';
-            });
-          });
+          sheet.querySelectorAll('.doc-header').forEach((n) => asTable(n, '0', 'bottom'));
+          sheet.querySelectorAll('.meta-grid').forEach((n) => asTable(n, '14px 0', 'top'));
+          sheet.querySelectorAll('.doc-ref-card').forEach((n) => asTable(n, '18px 0', 'top'));
+          sheet.querySelectorAll('.party-grid').forEach((n) => asTable(n, '14px 0', 'top'));
+          sheet.querySelectorAll('.sig-grid').forEach((n) => asTable(n, '20px 0', 'top'));
+          sheet.querySelectorAll('.proj-line, .meta-right > div').forEach((n) => asTable(n, '0', 'baseline'));
         },
       },
-      pagebreak: { mode: ['css', 'legacy'] },
+      pagebreak: { mode: ['css'] },
       jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
     };
   }
@@ -125,6 +137,7 @@ window.TCVDoc = (function () {
       padding: el.style.padding,
       overflow: el.style.overflow,
       height: el.style.height,
+      minHeight: el.style.minHeight,
       backgroundImage: el.style.backgroundImage,
       position: el.style.position,
       left: el.style.left,
@@ -142,6 +155,7 @@ window.TCVDoc = (function () {
     el.style.padding = '68px 68px 83px';
     el.style.overflow = 'visible';
     el.style.height = 'auto';
+    el.style.minHeight = '0';
     el.style.backgroundImage = 'none';
     el.style.position = 'static';
     el.style.left = 'auto';
