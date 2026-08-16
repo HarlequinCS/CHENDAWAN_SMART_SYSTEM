@@ -55,6 +55,8 @@ window.TCVDoc = (function () {
   }
 
   function pdfOptions(el, filename) {
+    const widthPx = 794;
+    const heightPx = Math.max(el.scrollHeight, el.offsetHeight, 1123);
     return {
       margin: 0,
       filename: filename || 'document.pdf',
@@ -64,8 +66,49 @@ window.TCVDoc = (function () {
         useCORS: true,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: el.scrollWidth,
-        windowHeight: el.scrollHeight,
+        windowWidth: widthPx,
+        windowHeight: heightPx,
+        backgroundColor: '#ffffff',
+        onclone: function (clonedDoc) {
+          const sheet = clonedDoc.getElementById(el.id) || clonedDoc.querySelector('.doc-sheet');
+          if (!sheet) return;
+          const wrap = sheet.closest('.report-print');
+          if (wrap) {
+            wrap.hidden = false;
+            wrap.style.position = 'static';
+            wrap.style.left = 'auto';
+            wrap.style.top = 'auto';
+          }
+          sheet.style.width = widthPx + 'px';
+          sheet.style.maxWidth = widthPx + 'px';
+          sheet.style.boxSizing = 'border-box';
+          sheet.style.overflow = 'visible';
+          sheet.style.backgroundImage = 'none';
+          sheet.style.height = 'auto';
+          sheet.style.padding = '68px 68px 83px';
+          [
+            '.doc-header',
+            '.meta-grid',
+            '.doc-ref-card',
+            '.party-grid',
+            '.sig-grid',
+            '.proj-strip',
+            '.proj-line',
+          ].forEach((sel) => {
+            sheet.querySelectorAll(sel).forEach((n) => {
+              n.style.display = 'flex';
+              n.style.flexWrap = 'nowrap';
+              n.style.maxWidth = '100%';
+            });
+          });
+          ['.meta-grid', '.doc-ref-card', '.party-grid', '.sig-grid', '.doc-header'].forEach((sel) => {
+            sheet.querySelectorAll(sel).forEach((n) => {
+              n.style.flexDirection = 'row';
+              n.style.alignItems = sel === '.doc-header' ? 'flex-end' : 'stretch';
+              n.style.width = '100%';
+            });
+          });
+        },
       },
       pagebreak: { mode: ['css', 'legacy'] },
       jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
@@ -74,19 +117,40 @@ window.TCVDoc = (function () {
 
   function withSheetUnlocked(el, fn) {
     const panel = el ? el.closest('.preview-panel') : null;
+    const printWrap = el ? el.closest('.report-print') : null;
     const prevOverflow = panel ? panel.style.overflow : '';
     const prevMax = panel ? panel.style.maxHeight : '';
     const prevHeight = panel ? panel.style.height : '';
+    const prevPrint = printWrap
+      ? {
+          hidden: printWrap.hidden,
+          position: printWrap.style.position,
+          left: printWrap.style.left,
+          top: printWrap.style.top,
+        }
+      : null;
     if (panel) {
       panel.style.overflow = 'visible';
       panel.style.maxHeight = 'none';
       panel.style.height = 'auto';
+    }
+    if (printWrap) {
+      printWrap.hidden = false;
+      printWrap.style.position = 'static';
+      printWrap.style.left = 'auto';
+      printWrap.style.top = 'auto';
     }
     const restore = () => {
       if (panel) {
         panel.style.overflow = prevOverflow;
         panel.style.maxHeight = prevMax;
         panel.style.height = prevHeight;
+      }
+      if (printWrap && prevPrint) {
+        printWrap.hidden = prevPrint.hidden;
+        printWrap.style.position = prevPrint.position;
+        printWrap.style.left = prevPrint.left;
+        printWrap.style.top = prevPrint.top;
       }
     };
     return Promise.resolve()
