@@ -57,6 +57,57 @@ window.TCVLegal = (function () {
     const N = window.TCVNumbers;
     const COMPANY = window.TCV_COMPANY || {};
     let numbering;
+    let issueGate;
+
+    function fillCompanyParty() {
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value || '';
+      };
+      const legal = COMPANY.legalName || 'TEAM CHENDAWAN VENTURES';
+      const owner = COMPANY.ownerName || '';
+      const title = COMPANY.ownerTitle || 'Owner / Sole Proprietor';
+      const ssm = COMPANY.ssmNo || '';
+      const addr = COMPANY.address || '';
+      const phone = COMPANY.phone || '+60 14-720 7787';
+      const email = COMPANY.email || '';
+      setText('pv-partyAName', legal);
+      setText('pv-partyAReg', ssm ? 'Registration No. ' + ssm : '');
+      setText(
+        'pv-partyAAddr',
+        addr
+          ? 'A sole proprietorship duly registered in Malaysia, having its principal place of business at ' +
+              addr +
+              '.'
+          : ''
+      );
+      setText('pv-signName', owner);
+      setText('pv-signTitle', title);
+      const sigFor = document.getElementById('pv-signFor');
+      if (sigFor) sigFor.textContent = 'For and on behalf of ' + (COMPANY.shortName || legal);
+      const intro = document.getElementById('pv-privacyIntro');
+      if (intro) {
+        intro.textContent =
+          legal +
+          ' (“we”, “us”, or “our”) respects your privacy and is committed to protecting your personal data in accordance with the Personal Data Protection Act 2010 of Malaysia (“PDPA”). This Privacy Policy explains how we collect, use, disclose, store, and protect personal data when you engage our services, visit our website, contact us, or otherwise interact with us.';
+      }
+      const contact = document.getElementById('pv-privacyContact');
+      if (contact) {
+        const esc = (s) =>
+          String(s || '').replace(/[&<>"']/g, (ch) => {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+          });
+        contact.innerHTML =
+          '<strong>' +
+          esc(legal) +
+          '</strong><br>Email: ' +
+          esc(email) +
+          '<br>Phone: ' +
+          esc(phone) +
+          '<br>Address: ' +
+          esc(addr);
+      }
+    }
 
     function collectState() {
       const fields = {};
@@ -92,7 +143,7 @@ window.TCVLegal = (function () {
         fields: Object.assign(
           {
             serviceCode: '',
-            jobNo: String(N.peekNextJob()),
+            jobNo: '',
             issueNo: '1',
             [opts.noId]: '',
             relatedNo: '',
@@ -125,6 +176,7 @@ window.TCVLegal = (function () {
       if (brandName) brandName.textContent = COMPANY.legalName || 'TEAM CHENDAWAN VENTURES';
       if (brandTag) brandTag.textContent = COMPANY.tagline || '';
       if (brandShort) brandShort.textContent = COMPANY.shortName || '';
+      fillCompanyParty();
 
       const start = window.TCVFirebase && window.TCVFirebase.ready ? window.TCVFirebase.ready : Promise.resolve();
       start
@@ -136,6 +188,11 @@ window.TCVLegal = (function () {
           return Promise.all(loads);
         })
         .then(() => {
+          issueGate = D.createIssueGate({
+            onReset: function () {
+              if (numbering) numbering.lockIssued(false);
+            },
+          });
           D.bindLivePreview(fill);
           if (window.TCVWorkers && document.getElementById('workerId')) {
             window.TCVWorkers.bindPicker({
@@ -182,16 +239,22 @@ window.TCVLegal = (function () {
             collectState,
             applyState,
             defaultState,
+            issueGate: issueGate,
           });
           document.getElementById('downloadBtn').addEventListener('click', async () => {
             try {
               if (document.getElementById('projectId') && window.TCVFirebase) {
-                await window.TCVFirebase.commitDocument({
-                  type: opts.prefix,
-                  noId: opts.noId,
-                  collectState,
+                const decision = await issueGate.beforeDownload({
+                  fingerprint: collectState,
+                  commit: () =>
+                    window.TCVFirebase.commitDocument({
+                      type: opts.prefix,
+                      noId: opts.noId,
+                      collectState,
+                    }),
                 });
-                if (window.TCVProjects) await window.TCVProjects.refresh();
+                if (decision.cancelled) return;
+                if (!decision.reused && window.TCVProjects) await window.TCVProjects.refresh();
                 fill();
               }
             } catch (e) {
@@ -201,8 +264,20 @@ window.TCVLegal = (function () {
             const no = document.getElementById(opts.noId).value.trim() || opts.filePrefix;
             D.downloadPdf(opts.sheetId, D.safeFilename(opts.filePrefix, no));
           });
-          applyState(defaultState());
-          numbering.refresh();
+          return D.loadIssuedIfPresent({
+            prefix: opts.prefix,
+            allowTypes: [opts.prefix],
+            applyState: applyState,
+            numbering: numbering,
+            issueGate: issueGate,
+            noId: opts.noId,
+            fingerprint: collectState,
+          }).then((doc) => {
+            if (!doc) {
+              applyState(defaultState());
+              numbering.refresh();
+            }
+          });
         })
         .catch(() => {});
     });

@@ -136,6 +136,7 @@ a.tool-tile:hover {
   margin: -24px 0 28px;
   font-size: 13px;
   color: var(--grey);
+  flex-wrap: wrap;
 }
 
 .hub-session button,
@@ -218,10 +219,10 @@ a.tool-tile:hover {
   font-size: 13px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1099px) {
   .hub-inner {
-    width: calc(100% - 32px);
-    padding: 40px 0 56px;
+    width: min(920px, calc(100% - 40px));
+    padding: 48px 0 64px;
   }
 
   .hub-brand {
@@ -229,6 +230,25 @@ a.tool-tile:hover {
   }
 
   .hub-brand img {
+    height: 44px;
+  }
+
+  .tools-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .hub-inner {
+    width: calc(100% - 32px);
+    padding: 40px 0 56px;
+  }
+
+  .hub-brand img {
     height: 40px;
+  }
+
+  .tools-grid {
+    grid-template-columns: 1fr;
   }
 }

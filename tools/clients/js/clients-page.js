@@ -43,6 +43,7 @@ function blankForm() {
   setVal('notes', '');
   document.getElementById('formTitle').textContent = 'Register a Client';
   applyTypeUi();
+  document.getElementById('statementWrap').hidden = true;
   renderList();
 }
 
@@ -61,6 +62,13 @@ function loadIntoForm(client) {
   setVal('notes', client.notes);
   document.getElementById('formTitle').textContent = 'Edit Client';
   applyTypeUi();
+  const wrap = document.getElementById('statementWrap');
+  wrap.hidden = false;
+  if (!val('stmtFrom') || !val('stmtTo')) {
+    const y = new Date().getFullYear();
+    setVal('stmtFrom', y + '-01-01');
+    setVal('stmtTo', window.TCVNumbers ? window.TCVNumbers.isoToday() : '');
+  }
   renderList();
 }
 
@@ -119,6 +127,102 @@ function renderList() {
   });
 }
 
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+  });
+}
+
+function rm(n) {
+  return 'RM ' + D.fmt(n);
+}
+
+function renderStatementSheet(client, stmt) {
+  const company = window.TCV_COMPANY || {};
+  const sheet = document.getElementById('statement-sheet');
+  const rowsHtml = stmt.rows
+    .map((r) => {
+      return (
+        '<tr><td>' +
+        esc(D.formatDate(r.date) || r.date) +
+        '</td><td>' +
+        esc(r.number) +
+        '</td><td>' +
+        esc(r.type) +
+        '</td><td class="num">' +
+        (r.debit ? rm(r.debit) : '') +
+        '</td><td class="num">' +
+        (r.credit ? rm(r.credit) : '') +
+        '</td><td class="num">' +
+        rm(r.balance) +
+        '</td></tr>'
+      );
+    })
+    .join('');
+  sheet.innerHTML =
+    '<div class="doc-header"><div><img src="../../assets/logo.png" alt="ChendAwan">' +
+    '<div class="doc-brand-name">' +
+    esc(company.legalName || 'TEAM CHENDAWAN VENTURES') +
+    '</div><div class="doc-brand-tag">' +
+    esc(company.tagline || '') +
+    '</div></div><div class="doc-title"><div class="big">STATEMENT</div>' +
+    '<div class="small">' +
+    esc(company.shortName || '') +
+    '</div></div></div><hr class="rule">' +
+    '<div class="stmt-client">' +
+    esc(client.name) +
+    '</div>' +
+    '<p class="stmt-meta">' +
+    esc(client.reg ? (client.type === 'individual' ? 'NRIC ' : 'Reg. ') + client.reg : '') +
+    (client.address ? '<br>' + esc(client.address) : '') +
+    '</p>' +
+    '<p class="stmt-meta">Period: ' +
+    esc(D.formatDate(stmt.from)) +
+    ' — ' +
+    esc(D.formatDate(stmt.to)) +
+    '<br>Phone: ' +
+    esc(company.phone || '+60 14-720 7787') +
+    '  ·  ' +
+    esc(company.email || '') +
+    '</p>' +
+    '<table class="stmt-table"><thead><tr><th>Date</th><th>Number</th><th>Type</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead><tbody>' +
+    '<tr class="is-open"><td colspan="5">Opening balance</td><td class="num">' +
+    rm(stmt.opening) +
+    '</td></tr>' +
+    (rowsHtml || '<tr><td colspan="6">No invoices, receipts, or credit notes in this period.</td></tr>') +
+    '<tr class="is-close"><td colspan="5">Amount due</td><td class="num">' +
+    rm(stmt.closing) +
+    '</td></tr></tbody></table>' +
+    '<p class="stmt-meta" style="margin-top:18px;">Positive balance is amount still owed to TEAM CHENDAWAN VENTURES.</p>';
+}
+
+async function downloadStatement() {
+  const id = val('clientRecordId');
+  const client = C.get(id);
+  if (!client) {
+    D.setStatus('Select a client first.');
+    return;
+  }
+  if (!window.TCVLedger || !window.TCVLedger.clientStatement) {
+    D.setStatus('Ledger is not available.');
+    return;
+  }
+  try {
+    await window.TCVLedger.ensureSeeded();
+    const stmt = await window.TCVLedger.clientStatement(id, val('stmtFrom'), val('stmtTo'));
+    renderStatementSheet(client, stmt);
+    document.getElementById('statementPrint').hidden = false;
+    const slug = (client.name || 'client').replace(/[^a-z0-9\-_]+/gi, '_');
+    D.downloadPdf(
+      'statement-sheet',
+      'Statement_' + slug + '_' + stmt.from + '_' + stmt.to + '.pdf',
+      'stmtBtn'
+    );
+  } catch (e) {
+    D.setStatus(e.message || 'Could not build the statement.');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('typeBusiness').addEventListener('click', () => {
     setVal('clientType', 'business');
@@ -132,6 +236,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('newBtn').addEventListener('click', () => {
     blankForm();
     D.setStatus('Ready for a new client.');
+  });
+  document.getElementById('stmtBtn').addEventListener('click', () => {
+    downloadStatement();
   });
   document.getElementById('saveBtn').addEventListener('click', async () => {
     const data = collectClient();

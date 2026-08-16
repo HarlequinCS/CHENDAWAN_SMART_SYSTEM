@@ -67,6 +67,22 @@
       <textarea id="notes" placeholder="Not printed on documents"></textarea>
     </fieldset>
 
+    <fieldset id="statementWrap" hidden>
+      <legend>Client statement</legend>
+      <p class="field-hint">One A4 of invoices, receipts, and credit notes. Does not post to the ledger.</p>
+      <div class="row2">
+        <div>
+          <label class="first">From</label>
+          <input type="date" id="stmtFrom">
+        </div>
+        <div>
+          <label>To</label>
+          <input type="date" id="stmtTo">
+        </div>
+      </div>
+      <button type="button" class="primary-btn" id="stmtBtn" style="margin-top:12px;">Download statement</button>
+    </fieldset>
+
     <div class="sticky-actions">
       <button type="button" class="primary-btn" id="saveBtn">Save client</button>
       <div class="save-row">
@@ -91,13 +107,20 @@
     <div class="client-list" id="clientList"></div>
   </div>
 </div>
+<div class="report-print" id="statementPrint" hidden>
+  <div class="doc-sheet" id="statement-sheet"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="../../js/firebase-config.js"></script>
 <script src="../../js/firebase.js"></script>
+<script src="../../js/company-defaults.js"></script>
 <script src="../../js/doc-common.js"></script>
+<script src="../../js/doc-numbers.js"></script>
 <script src="../../js/clients.js"></script>
+<script src="../../js/ledger.js"></script>
 <script src="js/clients-page.js"></script>
 </body>
 </html>

@@ -145,11 +145,141 @@ window.TCVDoc = (function () {
     });
   }
 
+  function issueFingerprint(value) {
+    function strip(obj) {
+      if (obj == null || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(strip);
+      const out = {};
+      Object.keys(obj)
+        .sort()
+        .forEach((k) => {
+          if (
+            /^(invNo|quoteNo|quoNo|receiptNo|rcpNo|pslNo|ndaNo|msaNo|slaNo|polNo|icaNo|docNo|cnNo|issueNo)$/i.test(
+              k
+            )
+          ) {
+            return;
+          }
+          out[k] = strip(obj[k]);
+        });
+      return out;
+    }
+    try {
+      return JSON.stringify(strip(value));
+    } catch (e) {
+      return String(Date.now());
+    }
+  }
+
+  function createIssueGate(opts) {
+    opts = opts || {};
+    let last = null;
+    function unlockIssued() {
+      if (window.TCVProjects && window.TCVProjects.lockIssued) window.TCVProjects.lockIssued(false);
+      if (typeof opts.onReset === 'function') opts.onReset();
+    }
+    function reset() {
+      last = null;
+      unlockIssued();
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('doc')) {
+        url.searchParams.delete('doc');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+      }
+    }
+    function prime(value, number, id) {
+      last = {
+        fp: issueFingerprint(typeof value === 'function' ? value() : value),
+        number: number,
+        id: id,
+      };
+    }
+    ['projectId', 'clientId', 'workerId'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', reset);
+    });
+    async function beforeDownload(downloadOpts) {
+      const raw =
+        typeof downloadOpts.fingerprint === 'function'
+          ? downloadOpts.fingerprint()
+          : downloadOpts.fingerprint;
+      const fp = issueFingerprint(raw);
+      if (last && last.fp === fp) {
+        setStatus('Re-downloading ' + last.number + ' — already issued, books unchanged.');
+        return { reused: true, number: last.number, id: last.id };
+      }
+      if (last && last.fp !== fp) {
+        if (!confirm('This will issue a new number and post the books again. Continue?')) {
+          return { cancelled: true };
+        }
+      }
+      const result = await downloadOpts.commit();
+      last = {
+        fp: fp,
+        number: result && result.number,
+        id: result && result.id,
+      };
+      return { reused: false, result: result };
+    }
+    return { beforeDownload, reset, prime };
+  }
+
+  async function loadIssuedIfPresent(opts) {
+    opts = opts || {};
+    const id = new URLSearchParams(window.location.search).get('doc');
+    if (!id || !window.TCVFirebase || !window.TCVFirebase.getDocument) return null;
+    let doc;
+    try {
+      doc = await window.TCVFirebase.getDocument(id);
+    } catch (e) {
+      setStatus(e.message || 'Could not open that document.');
+      return null;
+    }
+    if (!doc) {
+      setStatus('That document was not found.');
+      return null;
+    }
+    const allowed = opts.allowTypes || (opts.prefix ? [opts.prefix] : []);
+    if (allowed.length && allowed.indexOf(doc.type) === -1) {
+      setStatus('This document belongs to a different tool.');
+      return null;
+    }
+    if (typeof opts.onBeforeApply === 'function') opts.onBeforeApply(doc);
+    if (opts.numbering && opts.numbering.lockIssued) opts.numbering.lockIssued(true);
+    if (window.TCVProjects && window.TCVProjects.lockIssued) window.TCVProjects.lockIssued(true);
+    if (typeof opts.applyState === 'function') opts.applyState(doc.payload || { fields: {} });
+    if (opts.noId && doc.number) {
+      const noEl = document.getElementById(opts.noId);
+      if (noEl) noEl.value = doc.number;
+    }
+    const issueEl = document.getElementById('issueNo');
+    if (issueEl && doc.issue) issueEl.value = String(doc.issue);
+    if (opts.issueGate && opts.issueGate.prime) {
+      const fpSrc = typeof opts.fingerprint === 'function' ? opts.fingerprint() : doc.payload || {};
+      opts.issueGate.prime(fpSrc, doc.number, doc.id);
+    }
+    if (opts.numbering && opts.numbering.refresh) opts.numbering.refresh();
+    setStatus('Opened ' + (doc.number || 'issued document') + ' — re-download will not post again.');
+    if (typeof opts.onAfterApply === 'function') opts.onAfterApply(doc);
+    return doc;
+  }
+
+  function downloadBlob(filename, text, mime) {
+    const blob = new Blob([text], { type: mime || 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
   function bindDraftActions(opts) {
     const { storageKey, collectState, applyState, defaultState } = opts;
+    const issueGate = opts.issueGate;
 
     document.getElementById('resetBtn').addEventListener('click', () => {
       if (confirm('Reset the form? This clears everything currently entered.')) {
+        if (issueGate) issueGate.reset();
         applyState(defaultState());
         setStatus('Form reset.');
       }
@@ -166,6 +296,7 @@ window.TCVDoc = (function () {
     document.getElementById('loadDraftBtn').addEventListener('click', () => {
       const state = loadDraft(storageKey);
       if (state) {
+        if (issueGate) issueGate.reset();
         applyState(state);
         setStatus('Draft loaded.');
       } else {
@@ -248,6 +379,9 @@ window.TCVDoc = (function () {
     companyDefaults,
     bindLivePreview,
     bindDraftActions,
+    createIssueGate,
+    loadIssuedIfPresent,
+    downloadBlob,
     amountInWords,
   };
 })();

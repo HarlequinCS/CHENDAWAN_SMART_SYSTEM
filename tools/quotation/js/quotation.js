@@ -239,7 +239,7 @@ function defaultState() {
   return {
     fields: {
       serviceCode: '',
-      jobNo: String(N.peekNextJob()),
+      jobNo: '',
       issueNo: '1',
       quoteNo: '',
       quoteDate: N.isoToday(),
@@ -265,6 +265,7 @@ function defaultState() {
 }
 
 let numbering;
+let issueGate;
 
 document.addEventListener('DOMContentLoaded', () => {
   const start = window.TCVFirebase && window.TCVFirebase.afterAuth
@@ -272,6 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
     : Promise.resolve();
   start
     .then(() => {
+      issueGate = D.createIssueGate({
+        onReset: () => {
+          if (numbering) numbering.lockIssued(false);
+        },
+      });
       D.bindLivePreview(renderPreview);
       if (window.TCVClients) {
         window.TCVClients.bindPicker({
@@ -281,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
           },
         });
       }
-      D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState });
+      D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState, issueGate: issueGate });
       numbering = window.TCVNumbers.bind({
         prefix: window.TCVNumbers.PREFIX.quotation,
         noId: 'quoteNo',
@@ -313,12 +319,17 @@ document.addEventListener('DOMContentLoaded', () => {
       );
       document.getElementById('downloadBtn').addEventListener('click', async () => {
         try {
-          await window.TCVFirebase.commitDocument({
-            type: window.TCVNumbers.PREFIX.quotation,
-            noId: 'quoteNo',
-            collectState,
+          const decision = await issueGate.beforeDownload({
+            fingerprint: collectState,
+            commit: () =>
+              window.TCVFirebase.commitDocument({
+                type: window.TCVNumbers.PREFIX.quotation,
+                noId: 'quoteNo',
+                collectState,
+              }),
           });
-          if (window.TCVProjects) await window.TCVProjects.refresh();
+          if (decision.cancelled) return;
+          if (!decision.reused && window.TCVProjects) await window.TCVProjects.refresh();
           renderPreview();
         } catch (e) {
           D.setStatus(e.message || 'Could not save document.');
@@ -327,8 +338,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const no = document.getElementById('quoteNo').value.trim() || 'quotation';
         D.downloadPdf('quote-sheet', D.safeFilename('Quotation', no));
       });
-      applyState(defaultState());
-      numbering.refresh();
+      return D.loadIssuedIfPresent({
+        prefix: window.TCVNumbers.PREFIX.quotation,
+        applyState: applyState,
+        numbering: numbering,
+        issueGate: issueGate,
+        noId: 'quoteNo',
+        fingerprint: collectState,
+      }).then((doc) => {
+        if (!doc) {
+          applyState(defaultState());
+          numbering.refresh();
+        }
+      });
     })
     .catch(() => {});
 });

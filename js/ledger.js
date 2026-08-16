@@ -246,6 +246,7 @@ window.TCVLedger = (function () {
     const cols = [
       'journals',
       'invoices',
+      'creditNotes',
       'bills',
       'billPayments',
       'expenses',
@@ -646,6 +647,76 @@ window.TCVLedger = (function () {
     return opts.documentId;
   }
 
+  async function postCreditNote(opts) {
+    await ensureSeeded();
+    const existing = await db().collection('creditNotes').doc(opts.documentId).get();
+    if (existing.exists) return opts.documentId;
+    const t = invoiceTotalsFromPayload(opts.payload);
+    const fields = (opts.payload && opts.payload.fields) || {};
+    const against = String(fields.invQuote || fields.againstInv || '').trim();
+    if (!against) throw new Error('Select the invoice this credit note is against.');
+    const inv = await findInvoiceByNumber(against);
+    if (!inv) throw new Error('Invoice ' + against + ' was not found in the ledger. Issue the invoice first.');
+    const remaining = money(inv.balance);
+    if (remaining <= 0) {
+      throw new Error(
+        'Invoice ' +
+          inv.number +
+          ' is already fully paid or credited. Record a refund from Bank if you need to return cash.'
+      );
+    }
+    if (t.total > remaining + 0.009) {
+      throw new Error(
+        'Credit of RM ' +
+          t.total.toFixed(2) +
+          ' exceeds remaining balance RM ' +
+          remaining.toFixed(2) +
+          ' on ' +
+          inv.number +
+          '.'
+      );
+    }
+    const date = (fields.invDate || '').slice(0, 10) || window.TCVNumbers.isoToday();
+    const lines = [];
+    if (t.subtotal) lines.push(line(CODES.REVENUE, t.subtotal, 0, opts.number));
+    if (t.sst) lines.push(line(CODES.SST, t.sst, 0, opts.number));
+    if (t.total) lines.push(line(CODES.AR, 0, t.total, inv.number));
+    if (!lines.length) return opts.documentId;
+    const jid = await postJournal({
+      date,
+      memo: 'Credit note ' + (opts.number || '') + ' on ' + inv.number,
+      sourceType: 'CN',
+      sourceId: opts.documentId,
+      projectId: opts.projectId || inv.projectId,
+      clientId: opts.clientId || inv.clientId,
+      lines,
+    });
+    const newBal = money(remaining - t.total);
+    let status = 'issued';
+    if (newBal <= 0) status = 'credited';
+    else if (newBal < money(inv.total)) status = 'partial';
+    await db().collection('invoices').doc(inv.id).set(
+      { balance: Math.max(0, newBal), status, updatedAt: now() },
+      { merge: true }
+    );
+    await db().collection('creditNotes').doc(opts.documentId).set({
+      number: opts.number,
+      documentId: opts.documentId,
+      invoiceId: inv.id,
+      invoiceNumber: inv.number,
+      clientId: opts.clientId || inv.clientId || '',
+      projectId: opts.projectId || inv.projectId || '',
+      date,
+      subtotal: t.subtotal,
+      sstPct: t.sstPct,
+      sst: t.sst,
+      total: t.total,
+      journalId: jid,
+      createdAt: now(),
+    });
+    return opts.documentId;
+  }
+
   async function invoiceIssueLines(number, subtotal, sst, total) {
     const lines = [line(CODES.AR, total, 0, number)];
     const rest = money(total - sst);
@@ -848,7 +919,7 @@ window.TCVLedger = (function () {
       if (other) lines.push(line(CODES.AP, 0, other, 'Deduction ' + opts.number));
     }
     if (!lines.length) return '';
-    return postJournal({
+    const jid = await postJournal({
       date,
       memo: (payload.isEmployee ? 'Payslip ' : 'Payment advice ') + (opts.number || ''),
       sourceType: 'PSL',
@@ -858,32 +929,54 @@ window.TCVLedger = (function () {
       bankAccountId: fields.bankAccountId || '',
       lines,
     });
+    if (!paidNow) {
+      const net = money(t.net);
+      if (net > 0) {
+        await recordBill({
+          skipJournal: true,
+          date,
+          amount: net,
+          accountCode: payload.isEmployee ? CODES.SALARY : CODES.CONTRACTOR,
+          workerId: opts.workerId || fields.workerId || '',
+          vendorName: fields.workerName || '',
+          projectId: opts.projectId || '',
+          memo: (payload.isEmployee ? 'Payslip ' : 'Payment advice ') + (opts.number || ''),
+          sourceType: 'PSL',
+          sourceId: opts.documentId,
+        });
+      }
+    }
+    return jid;
   }
 
   async function onDocumentCommitted(info) {
     await ensureSeeded();
     const type = info.type;
     if (type === 'INV') return postInvoiceIssued(info);
+    if (type === 'CN') return postCreditNote(info);
     if (type === 'RCP') return applyReceipt(info);
     if (type === 'PSL') return postPayslip(info);
   }
 
   async function recordBill(data) {
     await ensureSeeded();
+    const ref = data.id ? db().collection('bills').doc(data.id) : db().collection('bills').doc();
     const amount = money(data.amount);
     const date = data.date || window.TCVNumbers.isoToday();
     const expenseCode = data.accountCode || CODES.CONTRACTOR;
-    const ref = db().collection('bills').doc();
-    const jid = await postJournal({
-      date,
-      memo: 'Bill ' + (data.memo || ref.id),
-      sourceType: 'BILL',
-      sourceId: ref.id,
-      projectId: data.projectId || '',
-      vendorId: data.vendorId || '',
-      workerId: data.workerId || '',
-      lines: [line(expenseCode, amount, 0, data.memo), line(CODES.AP, 0, amount, data.memo)],
-    });
+    let jid = data.journalId || '';
+    if (!data.skipJournal) {
+      jid = await postJournal({
+        date,
+        memo: 'Bill ' + (data.memo || ref.id),
+        sourceType: 'BILL',
+        sourceId: ref.id,
+        projectId: data.projectId || '',
+        vendorId: data.vendorId || '',
+        workerId: data.workerId || '',
+        lines: [line(expenseCode, amount, 0, data.memo), line(CODES.AP, 0, amount, data.memo)],
+      });
+    }
     const row = {
       vendorId: data.vendorId || '',
       vendorName: data.vendorName || '',
@@ -897,6 +990,8 @@ window.TCVLedger = (function () {
       status: 'unpaid',
       memo: data.memo || '',
       journalId: jid,
+      sourceType: data.sourceType || 'BILL',
+      sourceId: data.sourceId || ref.id,
       createdAt: now(),
     };
     await ref.set(row);
@@ -919,7 +1014,7 @@ window.TCVLedger = (function () {
     const date = data.date || bill.date;
     const expenseCode = data.accountCode || bill.accountCode || CODES.CONTRACTOR;
     const memo = data.memo != null ? data.memo : bill.memo || '';
-    if (bill.journalId) {
+    if (bill.journalId && bill.sourceType !== 'PSL') {
       await updateJournal(bill.journalId, {
         date,
         memo: memo || 'Bill',
@@ -1068,7 +1163,10 @@ window.TCVLedger = (function () {
     if (!data.workerId) throw new Error('Select a worker.');
     const date = data.date || window.TCVNumbers.isoToday();
     const kind = data.workerKind || 'contractor';
-    const costCode = kind === 'employee' ? CODES.SALARY : CODES.CONTRACTOR;
+    if (kind === 'employee') {
+      throw new Error('Pay employees from the Payslip tool so EPF/SOCSO are posted.');
+    }
+    const costCode = CODES.CONTRACTOR;
     const bankId = data.bankAccountId || (defaultBankAccount() && defaultBankAccount().id) || '';
     const bankCode = bankGlCode(bankId);
     const name = data.workerName || 'worker';
@@ -1287,6 +1385,170 @@ window.TCVLedger = (function () {
     return jid;
   }
 
+  async function listCreditNotes() {
+    const snap = await db().collection('creditNotes').get();
+    return snap.docs
+      .map((d) => Object.assign({}, d.data(), { id: d.id }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }
+
+  function eventDate(row) {
+    return String(row.date || '').slice(0, 10);
+  }
+
+  async function clientStatement(clientId, from, to) {
+    await ensureSeeded();
+    if (!clientId) throw new Error('Select a client first.');
+    from = String(from || '').slice(0, 10);
+    to = String(to || '').slice(0, 10);
+    if (!from || !to) throw new Error('Choose a statement period.');
+    const [invoices, creditNotes, docSnap] = await Promise.all([
+      listInvoices(),
+      listCreditNotes(),
+      db().collection('documents').where('clientId', '==', clientId).get(),
+    ]);
+    const events = [];
+    invoices
+      .filter((i) => i.clientId === clientId)
+      .forEach((i) => {
+        events.push({
+          date: eventDate(i),
+          number: i.number || '',
+          type: 'INV',
+          debit: money(i.total),
+          credit: 0,
+        });
+      });
+    creditNotes
+      .filter((c) => c.clientId === clientId)
+      .forEach((c) => {
+        events.push({
+          date: eventDate(c),
+          number: c.number || '',
+          type: 'CN',
+          debit: 0,
+          credit: money(c.total),
+        });
+      });
+    docSnap.docs.forEach((d) => {
+      const row = Object.assign({}, d.data(), { id: d.id });
+      if (row.type === 'RCP') {
+        const fields = (row.payload && row.payload.fields) || {};
+        events.push({
+          date: String(fields.receiptDate || row.issuedAt || '').slice(0, 10),
+          number: row.number || '',
+          type: 'RCP',
+          debit: 0,
+          credit: money(fields.amount),
+        });
+      }
+      if (row.type === 'CN' && !creditNotes.some((c) => c.documentId === row.id || c.id === row.id)) {
+        const fields = (row.payload && row.payload.fields) || {};
+        const items = (row.payload && row.payload.items) || [];
+        const t = invoiceTotalsFromPayload({ fields: fields, items: items });
+        events.push({
+          date: String(fields.invDate || row.issuedAt || '').slice(0, 10),
+          number: row.number || '',
+          type: 'CN',
+          debit: 0,
+          credit: money(t.total),
+        });
+      }
+    });
+    events.sort((a, b) => {
+      const d = String(a.date).localeCompare(String(b.date));
+      if (d) return d;
+      return String(a.number).localeCompare(String(b.number));
+    });
+    let opening = 0;
+    const rows = [];
+    events.forEach((ev) => {
+      if (!ev.date) return;
+      if (ev.date < from) {
+        opening = money(opening + ev.debit - ev.credit);
+        return;
+      }
+      if (ev.date > to) return;
+      rows.push(ev);
+    });
+    let running = opening;
+    const lined = rows.map((ev) => {
+      running = money(running + ev.debit - ev.credit);
+      return Object.assign({}, ev, { balance: running });
+    });
+    return {
+      clientId,
+      from,
+      to,
+      opening,
+      closing: running,
+      rows: lined,
+    };
+  }
+
+  async function dumpCollection(name) {
+    const snap = await db().collection(name).get();
+    return snap.docs.map((d) => JSON.parse(JSON.stringify(Object.assign({ id: d.id }, d.data()))));
+  }
+
+  async function exportBackup() {
+    await ensureSeeded();
+    const names = [
+      'clients',
+      'projects',
+      'workers',
+      'documents',
+      'invoices',
+      'creditNotes',
+      'bills',
+      'billPayments',
+      'expenses',
+      'journals',
+      'accounts',
+      'bankAccounts',
+      'vendors',
+      'workerPayments',
+      'periods',
+    ];
+    const collections = {};
+    for (let i = 0; i < names.length; i++) {
+      collections[names[i]] = await dumpCollection(names[i]);
+    }
+    const metaSnap = await db().collection('meta').doc('ledger').get();
+    return {
+      exportedAt: now(),
+      app: 'ChendAwan Tools',
+      meta: metaSnap.exists ? JSON.parse(JSON.stringify(metaSnap.data())) : {},
+      collections,
+    };
+  }
+
+  function csvCell(v) {
+    const s = String(v == null ? '' : v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function journalsCsv(journals) {
+    const header = ['date', 'memo', 'source', 'account', 'debit', 'credit'];
+    const lines = [header.join(',')];
+    (journals || []).forEach((j) => {
+      (j.lines || []).forEach((l) => {
+        lines.push(
+          [
+            csvCell(j.date),
+            csvCell(j.memo),
+            csvCell((j.sourceType || '') + (j.sourceId ? ' ' + j.sourceId : '')),
+            csvCell((l.accountCode || '') + ' ' + (l.accountName || '')),
+            csvCell(money(l.debit).toFixed(2)),
+            csvCell(money(l.credit).toFixed(2)),
+          ].join(',')
+        );
+      });
+    });
+    return lines.join('\r\n');
+  }
+
   async function listOrphanInvoices() {
     const [docSnap, invSnap] = await Promise.all([
       db().collection('documents').where('type', '==', 'INV').get(),
@@ -1329,6 +1591,7 @@ window.TCVLedger = (function () {
     isPeriodLocked,
     listJournals,
     listInvoices,
+    listCreditNotes,
     listBills,
     listExpenses,
     listVendors,
@@ -1352,6 +1615,9 @@ window.TCVLedger = (function () {
     findInvoiceByNumber,
     recordInvoicePayment,
     listOrphanInvoices,
+    clientStatement,
+    exportBackup,
+    journalsCsv,
     line,
   };
 })();

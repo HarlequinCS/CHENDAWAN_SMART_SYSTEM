@@ -10,13 +10,13 @@
  * POL/2026/001-ITC-500/01
  * ICA/2026/001-WSD-100/01
  * PSL/2026/001-ITC-500/01
+ * CN/2026/001-WSD-100/01
  *
  * PREFIX / YEAR / JOB - SERVICE CODE [ - ISSUE ]
  * Issue is omitted when it is 1. A second invoice for the same job:
  * INV/2026/001-WSD-100/01-002
  */
 window.TCVNumbers = (function () {
-  const SEQ_KEY = 'tcv_job_seq_v1';
   const PREFIX = {
     quotation: 'QUO',
     invoice: 'INV',
@@ -27,7 +27,23 @@ window.TCVNumbers = (function () {
     privacy: 'POL',
     ica: 'ICA',
     payslip: 'PSL',
+    creditNote: 'CN',
   };
+
+  const TOOL_FOLDER = {
+    QUO: 'quotation',
+    INV: 'invoice',
+    CN: 'invoice',
+    RCP: 'receipt',
+    NDA: 'nda',
+    MSA: 'msa',
+    SLA: 'sla',
+    POL: 'privacy',
+    ICA: 'ica',
+    PSL: 'payslip',
+  };
+
+  const PREFIX_RE = 'QUO|INV|RCP|NDA|MSA|SLA|POL|ICA|PSL|CN';
 
   function pad(n, width) {
     return String(parseInt(n, 10) || 0).padStart(width || 3, '0');
@@ -52,26 +68,11 @@ window.TCVNumbers = (function () {
     return d.getFullYear() + '-' + m + '-' + day;
   }
 
-  function getLastJob() {
-    try {
-      const n = parseInt(localStorage.getItem(SEQ_KEY), 10);
-      return isNaN(n) ? 0 : n;
-    } catch (e) {
-      return 0;
-    }
-  }
-
   function peekNextJob() {
-    return getLastJob() + 1;
+    return 1;
   }
 
-  function commitJob(n) {
-    const job = parseInt(n, 10);
-    if (!job) return;
-    try {
-      if (job > getLastJob()) localStorage.setItem(SEQ_KEY, String(job));
-    } catch (e) {}
-  }
+  function commitJob() {}
 
   function build(opts) {
     const prefix = opts.prefix;
@@ -88,7 +89,10 @@ window.TCVNumbers = (function () {
   function parse(str) {
     const s = (str || '').trim();
     if (!s) return null;
-    const long = /^(QUO|INV|RCP|NDA|MSA|SLA|POL|ICA|PSL)\/(\d{4})\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
+    const long = new RegExp(
+      '^(' + PREFIX_RE + ')\\/(\\d{4})\\/(\\d+)-([A-Z]{3}-\\d{3}\\/\\d{2})(?:-(\\d+))?$',
+      'i'
+    ).exec(s);
     if (long) {
       return {
         prefix: long[1].toUpperCase(),
@@ -98,7 +102,10 @@ window.TCVNumbers = (function () {
         issue: parseInt(long[5], 10) || 1,
       };
     }
-    const short = /^(QUO|INV|RCP|NDA|MSA|SLA|POL|ICA|PSL)\/(\d+)-([A-Z]{3}-\d{3}\/\d{2})(?:-(\d+))?$/i.exec(s);
+    const short = new RegExp(
+      '^(' + PREFIX_RE + ')\\/(\\d+)-([A-Z]{3}-\\d{3}\\/\\d{2})(?:-(\\d+))?$',
+      'i'
+    ).exec(s);
     if (short) {
       return {
         prefix: short[1].toUpperCase(),
@@ -109,6 +116,17 @@ window.TCVNumbers = (function () {
       };
     }
     return null;
+  }
+
+  function toolFolder(prefix) {
+    return TOOL_FOLDER[String(prefix || '').toUpperCase()] || '';
+  }
+
+  function toolHref(prefix, docId) {
+    const folder = toolFolder(prefix);
+    if (!folder) return '';
+    const q = docId ? '?doc=' + encodeURIComponent(docId) : '';
+    return '../' + folder + '/' + q;
   }
 
   function convert(str, newPrefix) {
@@ -141,13 +159,21 @@ window.TCVNumbers = (function () {
     const relatedEl = opts.relatedId ? document.getElementById(opts.relatedId) : null;
     const nextBtn = opts.nextBtnId ? document.getElementById(opts.nextBtnId) : null;
     const hintEl = opts.hintId ? document.getElementById(opts.hintId) : null;
-    const prefix = opts.prefix;
+    let prefix = opts.prefix;
+    let issuedLock = false;
 
     if (serviceEl && !serviceEl.options.length) {
       serviceEl.innerHTML = window.tcvServiceOptionsHtml('');
     }
 
     function refresh() {
+      if (issuedLock) {
+        if (hintEl && noEl && noEl.value) {
+          hintEl.textContent = 'Issued ' + noEl.value + ' — re-download does not create a new number.';
+        }
+        if (typeof opts.onChange === 'function') opts.onChange();
+        return;
+      }
       const parsedRelated = relatedEl ? parse(relatedEl.value) : null;
       const yearEl = document.getElementById('docYear');
       const code = serviceEl.value;
@@ -168,7 +194,6 @@ window.TCVNumbers = (function () {
 
     serviceEl.addEventListener('change', () => {
       applyServiceToForm(serviceEl.value);
-      if (!jobEl.value) jobEl.value = String(peekNextJob());
       refresh();
     });
 
@@ -176,8 +201,14 @@ window.TCVNumbers = (function () {
     if (issueEl) issueEl.addEventListener('input', refresh);
 
     if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        jobEl.value = String(peekNextJob());
+      nextBtn.addEventListener('click', async () => {
+        if (window.TCVFirebase && window.TCVFirebase.peekNextJobNo) {
+          try {
+            jobEl.value = String(await window.TCVFirebase.peekNextJobNo());
+          } catch (e) {
+            jobEl.value = '1';
+          }
+        }
         refresh();
       });
     }
@@ -215,6 +246,15 @@ window.TCVNumbers = (function () {
 
     return {
       refresh,
+      setPrefix: function (next) {
+        prefix = next;
+      },
+      lockIssued: function (on) {
+        issuedLock = !!on;
+      },
+      isIssuedLocked: function () {
+        return issuedLock;
+      },
       commit: function () {
         commitJob(jobEl.value);
       },
@@ -223,11 +263,12 @@ window.TCVNumbers = (function () {
 
   return {
     PREFIX,
+    toolFolder,
+    toolHref,
     pad,
     yearNow,
     isoToday,
     isoPlusDays,
-    getLastJob,
     peekNextJob,
     commitJob,
     build,

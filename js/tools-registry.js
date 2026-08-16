@@ -31,7 +31,7 @@ window.CHENDAWAN_TOOLS = [
   {
     id: 'invoice',
     name: 'Invoice Generator',
-    description: 'Build branded invoices with service codes and download as PDF.',
+    description: 'Build branded invoices and credit notes, then download as PDF.',
     href: 'tools/invoice/',
     status: 'ready',
   },

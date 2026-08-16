@@ -111,6 +111,21 @@ function renderPreview() {
   g('pv-invDue').textContent = val('invDue') || '—';
   g('pv-invQuote').textContent = val('invQuote') || '—';
 
+  const cn = isCreditNote();
+  if (g('pv-docTitle')) g('pv-docTitle').textContent = cn ? 'CREDIT NOTE' : 'INVOICE';
+  if (g('pv-noLab')) g('pv-noLab').textContent = cn ? 'Credit Note No. ' : 'Invoice No. ';
+  if (g('pv-dateLab')) g('pv-dateLab').textContent = cn ? 'Credit Note Date ' : 'Invoice Date ';
+  if (g('pv-refLab')) g('pv-refLab').textContent = cn ? 'Against Invoice ' : 'Reference Quotation ';
+  if (g('pv-dueRow')) g('pv-dueRow').hidden = cn;
+  if (g('pv-totalLab')) g('pv-totalLab').textContent = cn ? 'CREDIT TOTAL' : 'TOTAL DUE';
+  if (g('pv-scheduleWrap')) g('pv-scheduleWrap').hidden = cn;
+  if (g('pv-payWrap')) g('pv-payWrap').hidden = cn;
+  if (g('pv-thanks')) {
+    g('pv-thanks').textContent = cn
+      ? 'This credit note reduces the amount due on the invoice named above.'
+      : 'Thank you for your business.';
+  }
+
   g('pv-projName').textContent = val('projName') || '—';
   g('pv-projStage').textContent = val('projStage') || '—';
   g('pv-scheduleNote').textContent = val('scheduleNote') || '—';
@@ -216,9 +231,14 @@ function collectState() {
     'prepTitle',
     'prepContact',
     'ssmNo',
+    'docKind',
+    'sourceInvId',
   ];
   const fields = {};
-  fieldIds.forEach((id) => (fields[id] = document.getElementById(id).value));
+  fieldIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) fields[id] = el.value;
+  });
   return { fields, items, notes };
 }
 
@@ -236,8 +256,152 @@ function applyState(state) {
   if (window.TCVProjects) window.TCVProjects.syncSelected();
   (state.items || []).forEach((it) => addItem(it));
   (state.notes || []).forEach((n) => addNote(n));
+  applyKindUi();
   if (numbering) numbering.refresh();
   else renderPreview();
+}
+
+function defaultSstPct() {
+  try {
+    if (window.TCVLedger && window.TCVLedger.getMeta && window.TCVLedger.getMeta().sstRegistered) {
+      return '6';
+    }
+  } catch (e) {}
+  return '0';
+}
+
+function isCreditNote() {
+  const el = document.getElementById('docKind');
+  return el && el.value === 'CN';
+}
+
+function currentPrefix() {
+  return isCreditNote() ? window.TCVNumbers.PREFIX.creditNote : window.TCVNumbers.PREFIX.invoice;
+}
+
+function applyKindUi() {
+  const cn = isCreditNote();
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const hide = (id, on) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = !!on;
+  };
+  document.getElementById('kindInv').classList.toggle('is-on', !cn);
+  document.getElementById('kindCn').classList.toggle('is-on', cn);
+  setText('formHeading', cn ? 'Build a Credit Note' : 'Build an Invoice');
+  setText(
+    'formSub',
+    cn
+      ? 'Credit the remaining amount on an issued invoice. The original INV stays on the books.'
+      : 'Fill in the fields — the preview on the right updates live. When it\'s ready, download it as a PDF.'
+  );
+  setText('detailsLegend', cn ? 'Credit Note Details' : 'Invoice Details');
+  setText('noLabel', cn ? 'Credit note no.' : 'Invoice no.');
+  setText('dateLabel', cn ? 'Credit note date' : 'Invoice date');
+  setText('quoteLabel', cn ? 'Against invoice' : 'Reference quotation no.');
+  setText('kindHint', cn
+    ? 'Select the invoice to reverse. Remaining AR is filled in; reduce lines for a partial credit.'
+    : 'Use a credit note to reverse part of an issued invoice without editing it.');
+  hide('sourceInvWrap', !cn);
+  hide('payFieldset', cn);
+  hide('scheduleFieldset', cn);
+  const dueWrap = document.getElementById('invDue');
+  if (dueWrap && dueWrap.closest('div')) dueWrap.closest('div').hidden = cn;
+  if (numbering && numbering.setPrefix) numbering.setPrefix(currentPrefix());
+  if (window.TCVProjects && window.TCVProjects.setPrefix) window.TCVProjects.setPrefix(currentPrefix());
+  const issued = numbering && numbering.isIssuedLocked && numbering.isIssuedLocked();
+  if (!issued && window.TCVProjects) {
+    const pid = (document.getElementById('projectId') || {}).value;
+    const project = pid ? window.TCVProjects.get(pid) : null;
+    const issueEl = document.getElementById('issueNo');
+    if (project && issueEl) issueEl.value = String(window.TCVProjects.peekIssue(project, currentPrefix()));
+  }
+  if (cn) loadSourceInvoices();
+  if (numbering) numbering.refresh();
+  else renderPreview();
+}
+
+function money(n) {
+  return Math.round((parseFloat(n) || 0) * 100) / 100;
+}
+
+function itemsTotal(items, sstPct) {
+  let subtotal = 0;
+  (items || []).forEach((it) => {
+    subtotal += money(it.amount);
+  });
+  subtotal = money(subtotal);
+  const sst = money(subtotal * ((parseFloat(sstPct) || 0) / 100));
+  return { subtotal, sst, total: money(subtotal + sst) };
+}
+
+function scaleItems(items, originalTotal, remaining) {
+  if (!originalTotal || remaining >= originalTotal - 0.009) return items || [];
+  const factor = remaining / originalTotal;
+  return (items || []).map((it) => {
+    const amt = money((parseFloat(it.amount) || 0) * factor);
+    const price = money((parseFloat(it.price) || 0) * factor);
+    return Object.assign({}, it, {
+      amount: amt ? amt.toFixed(2) : it.amount,
+      price: price ? price.toFixed(2) : it.price,
+    });
+  });
+}
+
+async function loadSourceInvoices() {
+  const sel = document.getElementById('sourceInvId');
+  if (!sel) return;
+  const projectId = (document.getElementById('projectId') || {}).value || '';
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Select an invoice…</option>';
+  if (!projectId || !window.TCVProjects) return;
+  try {
+    const docs = await window.TCVProjects.listDocuments(projectId);
+    const invs = docs.filter((d) => d.type === 'INV');
+    let invoices = [];
+    if (window.TCVLedger && window.TCVLedger.listInvoices) {
+      invoices = await window.TCVLedger.listInvoices();
+    }
+    invs.forEach((d) => {
+      const row = invoices.find((i) => i.number === d.number || i.id === d.id);
+      const bal = row ? money(row.balance) : null;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent =
+        (d.number || 'INV') +
+        (bal == null ? '' : '  ·  RM ' + D.fmt(bal) + ' remaining');
+      sel.appendChild(opt);
+    });
+    if (current && Array.prototype.some.call(sel.options, (o) => o.value === current)) {
+      sel.value = current;
+    }
+  } catch (e) {}
+}
+
+async function fillFromSourceInvoice(docId) {
+  if (!docId || !window.TCVFirebase) return;
+  const doc = await window.TCVFirebase.getDocument(docId);
+  if (!doc || doc.type !== 'INV') return;
+  const payload = doc.payload || {};
+  const fields = Object.assign({}, payload.fields || {});
+  fields.docKind = 'CN';
+  fields.sourceInvId = doc.id;
+  fields.invQuote = doc.number || fields.invNo || '';
+  fields.invNo = '';
+  fields.issueNo = '1';
+  fields.invDate = window.TCVNumbers.isoToday();
+  let items = (payload.items || []).slice();
+  if (window.TCVLedger && window.TCVLedger.findInvoiceByNumber) {
+    const inv = await window.TCVLedger.findInvoiceByNumber(doc.number);
+    if (inv) {
+      const orig = itemsTotal(items, fields.sstPct);
+      items = scaleItems(items, orig.total, money(inv.balance));
+    }
+  }
+  applyState({ fields: fields, items: items, notes: payload.notes || [] });
 }
 
 function defaultState() {
@@ -246,7 +410,7 @@ function defaultState() {
   return {
     fields: {
       serviceCode: '',
-      jobNo: String(N.peekNextJob()),
+      jobNo: '',
       issueNo: '1',
       invNo: '',
       invDate: N.isoToday(),
@@ -259,7 +423,9 @@ function defaultState() {
       prepTitle: c.prepTitle,
       prepContact: c.prepContact,
       ssmNo: c.ssmNo,
-      sstPct: '0',
+      sstPct: defaultSstPct(),
+      docKind: 'INV',
+      sourceInvId: '',
     },
     items: [{ code: '', desc: '', sub: '', qty: '1', price: '', amount: '' }],
     notes: [
@@ -270,6 +436,7 @@ function defaultState() {
 }
 
 let numbering;
+let issueGate;
 
 document.addEventListener('DOMContentLoaded', () => {
   const start = window.TCVFirebase && window.TCVFirebase.afterAuth
@@ -277,6 +444,14 @@ document.addEventListener('DOMContentLoaded', () => {
     : Promise.resolve();
   start
     .then(() => {
+      if (window.TCVLedger && window.TCVLedger.ensureSeeded) return window.TCVLedger.ensureSeeded();
+    })
+    .then(() => {
+      issueGate = D.createIssueGate({
+        onReset: () => {
+          if (numbering) numbering.lockIssued(false);
+        },
+      });
       D.bindLivePreview(renderPreview);
       if (window.TCVClients) {
         window.TCVClients.bindPicker({
@@ -291,6 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
         collectState,
         applyState,
         defaultState,
+        issueGate: issueGate,
       });
       numbering = window.TCVNumbers.bind({
         prefix: window.TCVNumbers.PREFIX.invoice,
@@ -307,31 +483,72 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TCVProjects.bindPicker({
           prefix: window.TCVNumbers.PREFIX.invoice,
           onChange: () => {
+            if (isCreditNote()) loadSourceInvoices();
             if (numbering) numbering.refresh();
             else renderPreview();
           },
         });
       }
+      document.getElementById('kindInv').addEventListener('click', () => {
+        document.getElementById('docKind').value = 'INV';
+        applyKindUi();
+      });
+      document.getElementById('kindCn').addEventListener('click', () => {
+        document.getElementById('docKind').value = 'CN';
+        applyKindUi();
+      });
+      document.getElementById('sourceInvId').addEventListener('change', () => {
+        fillFromSourceInvoice(document.getElementById('sourceInvId').value).catch((e) => {
+          D.setStatus(e.message || 'Could not load that invoice.');
+        });
+      });
       document.getElementById('addItemBtn').addEventListener('click', () => addItem());
       document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
       document.getElementById('downloadBtn').addEventListener('click', async () => {
         try {
-          await window.TCVFirebase.commitDocument({
-            type: window.TCVNumbers.PREFIX.invoice,
-            noId: 'invNo',
-            collectState,
+          if (isCreditNote() && !document.getElementById('invQuote').value.trim()) {
+            D.setStatus('Select the invoice this credit note is against.');
+            return;
+          }
+          const decision = await issueGate.beforeDownload({
+            fingerprint: collectState,
+            commit: () =>
+              window.TCVFirebase.commitDocument({
+                type: currentPrefix(),
+                noId: 'invNo',
+                collectState,
+              }),
           });
-          if (window.TCVProjects) await window.TCVProjects.refresh();
+          if (decision.cancelled) return;
+          if (!decision.reused && window.TCVProjects) await window.TCVProjects.refresh();
           renderPreview();
         } catch (e) {
           D.setStatus(e.message || 'Could not save document.');
           return;
         }
-        const invNo = document.getElementById('invNo').value.trim() || 'invoice';
-        D.downloadPdf('invoice-sheet', D.safeFilename('Invoice', invNo));
+        const invNo = document.getElementById('invNo').value.trim() || (isCreditNote() ? 'credit-note' : 'invoice');
+        D.downloadPdf('invoice-sheet', D.safeFilename(isCreditNote() ? 'CreditNote' : 'Invoice', invNo));
       });
-      applyState(defaultState());
-      numbering.refresh();
+      return D.loadIssuedIfPresent({
+        allowTypes: [window.TCVNumbers.PREFIX.invoice, window.TCVNumbers.PREFIX.creditNote],
+        applyState: applyState,
+        numbering: numbering,
+        issueGate: issueGate,
+        noId: 'invNo',
+        fingerprint: collectState,
+        onBeforeApply: (doc) => {
+          document.getElementById('docKind').value = doc.type === 'CN' ? 'CN' : 'INV';
+          if (numbering && numbering.setPrefix) numbering.setPrefix(currentPrefix());
+          if (window.TCVProjects && window.TCVProjects.setPrefix) {
+            window.TCVProjects.setPrefix(currentPrefix());
+          }
+        },
+      }).then((doc) => {
+        if (!doc) {
+          applyState(defaultState());
+          numbering.refresh();
+        }
+      });
     })
     .catch(() => {});
 });

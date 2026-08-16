@@ -58,7 +58,19 @@ async function renderHistory(projectId) {
       row.querySelector('.card-meta').textContent =
         (d.issuedAt ? String(d.issuedAt).slice(0, 10) : '') +
         (d.issue > 1 ? '  ·  issue ' + d.issue : '');
-      ul.appendChild(row);
+      const href =
+        window.TCVNumbers && window.TCVNumbers.toolHref
+          ? window.TCVNumbers.toolHref(d.type, d.id)
+          : '';
+      if (href) {
+        const link = document.createElement('a');
+        link.className = 'client-card';
+        link.href = href;
+        link.innerHTML = row.innerHTML;
+        ul.appendChild(link);
+      } else {
+        ul.appendChild(row);
+      }
     });
     box.innerHTML = '<p class="tools-label" style="margin:18px 0 10px;">Issued documents</p>';
     box.appendChild(ul);
@@ -165,10 +177,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const boot = window.TCVFirebase && window.TCVFirebase.ready ? window.TCVFirebase.ready : Promise.resolve();
   boot
     .then(() => Promise.all([C.refresh(), P.refresh()]))
-    .then(() => {
+    .then(async () => {
       const sel = document.getElementById('clientId');
       sel.innerHTML = C.optionsHtml('');
       renderList();
+      try {
+        if (window.TCVFirebase.peekNextJobNo) {
+          const next = await window.TCVFirebase.peekNextJobNo();
+          const hint = document.getElementById('jobHint');
+          if (hint) {
+            hint.textContent =
+              'Next new project will be job ' +
+              window.TCVNumbers.pad(next, 3) +
+              ' for this year (assigned from Firebase, not this browser).';
+          }
+        }
+      } catch (e) {}
     })
     .catch(() => {});
 });

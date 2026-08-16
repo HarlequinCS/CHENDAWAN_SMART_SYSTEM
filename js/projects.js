@@ -4,6 +4,7 @@
 window.TCVProjects = (function () {
   let cache = [];
   let bound = null;
+  let issuedLock = false;
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => {
@@ -138,7 +139,7 @@ window.TCVProjects = (function () {
     set('jobNo', String(project.jobNo || ''));
     set('serviceCode', project.serviceCode || '');
     set('docYear', String(project.year || ''));
-    set('issueNo', String(peekIssue(project, prefix)));
+    if (!issuedLock) set('issueNo', String(peekIssue(project, prefix)));
     const projName = document.getElementById('projName');
     if (projName && !projName.value.trim() && project.name) projName.value = project.name;
     if (window.TCVNumbers) window.TCVNumbers.applyServiceToForm(project.serviceCode);
@@ -214,6 +215,12 @@ window.TCVProjects = (function () {
     applyToForm,
     bindPicker,
     syncSelected,
+    setPrefix: function (prefix) {
+      if (bound) bound.prefix = prefix;
+    },
+    lockIssued: function (on) {
+      issuedLock = !!on;
+    },
     label,
   };
 })();

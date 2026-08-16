@@ -18,8 +18,18 @@
       <img src="../../assets/logo.png" alt="ChendAwan">
       <span>Invoice Generator</span>
     </div>
-    <h1>Build an Invoice</h1>
-    <p class="sub">Fill in the fields — the preview on the right updates live. When it's ready, download it as a PDF.</p>
+    <h1 id="formHeading">Build an Invoice</h1>
+    <p class="sub" id="formSub">Fill in the fields — the preview on the right updates live. When it's ready, download it as a PDF.</p>
+
+    <fieldset>
+      <legend>Document type</legend>
+      <div class="type-toggle" role="group" aria-label="Document type">
+        <button type="button" id="kindInv" class="is-on">Invoice</button>
+        <button type="button" id="kindCn">Credit note</button>
+      </div>
+      <input type="hidden" id="docKind" value="INV">
+      <p class="field-hint" id="kindHint">Use a credit note to reverse part of an issued invoice without editing it.</p>
+    </fieldset>
 
     <fieldset>
       <legend>Bill To</legend>
@@ -37,7 +47,7 @@
     </fieldset>
 
     <fieldset>
-      <legend>Invoice Details</legend>
+      <legend id="detailsLegend">Invoice Details</legend>
       <label class="first">Job / project</label>
       <select id="projectId"></select>
       <p class="field-hint"><a href="../../tools/projects/">Create a project</a> to get a job number. Issue is assigned when you download the PDF.</p>
@@ -55,20 +65,25 @@
           <input type="number" id="issueNo" min="1" step="1" value="1" readonly>
         </div>
       </div>
-      <label>Invoice no.</label>
+      <label id="noLabel">Invoice no.</label>
       <input type="text" id="invNo" readonly placeholder="Select a project">
       <p class="field-hint" id="invNoHint"></p>
+      <div id="sourceInvWrap" hidden>
+        <label>Invoice to credit</label>
+        <select id="sourceInvId"></select>
+        <p class="field-hint">Remaining AR is credited by default. Reduce lines if you only reverse part of the invoice.</p>
+      </div>
       <div class="row2">
         <div>
-          <label>Invoice date</label>
+          <label id="dateLabel">Invoice date</label>
           <input type="date" id="invDate">
         </div>
         <div>
-          <label>Payment due</label>
+          <label id="dueLabel">Payment due</label>
           <input type="text" id="invDue" placeholder="e.g. Upon Receipt">
         </div>
       </div>
-      <label>Reference quotation no.</label>
+      <label id="quoteLabel">Reference quotation no.</label>
       <input type="text" id="invQuote" placeholder="Paste QUO/2026/001-WSD-100/01 to auto-fill">
     </fieldset>
 
@@ -88,13 +103,13 @@
       <input type="number" id="sstPct" value="0" min="0" step="0.01">
     </fieldset>
 
-    <fieldset>
+    <fieldset id="scheduleFieldset">
       <legend>Payment Schedule Note</legend>
-      <label class="first">Explain what this invoice covers</label>
-      <textarea id="scheduleNote" placeholder="e.g. This invoice covers the 20% Deposit milestone of the 20-40-40 payment schedule set out in Quotation No. TCV-2026-001, payable upon project confirmation."></textarea>
+      <label class="first" id="scheduleLabel">Explain what this invoice covers</label>
+      <textarea id="scheduleNote" placeholder="e.g. This invoice covers the 20% Deposit milestone of the 20-40-40 payment schedule set out in Quotation No. QUO/2026/001-WSD-100/01, payable upon project confirmation."></textarea>
     </fieldset>
 
-    <fieldset>
+    <fieldset id="payFieldset">
       <legend>Payment Details</legend>
       <label class="first">Account name</label>
       <input type="text" id="bankAccName" placeholder="Saiful Iqbal">
@@ -146,7 +161,7 @@
           <div class="doc-brand-tag" id="pv-companyTag"></div>
         </div>
         <div class="doc-title">
-          <div class="big">INVOICE</div>
+          <div class="big" id="pv-docTitle">INVOICE</div>
           <div class="small" id="pv-companyShort"></div>
         </div>
       </div>
@@ -161,10 +176,10 @@
           <div class="line" id="pv-clientAddr"></div>
         </div>
         <div class="meta-right">
-          <div><span class="lab">Invoice No. </span><span class="val" id="pv-invNo"></span></div>
-          <div><span class="lab">Invoice Date </span><span class="val" id="pv-invDate"></span></div>
-          <div><span class="lab">Payment Due </span><span class="val" id="pv-invDue"></span></div>
-          <div><span class="lab">Reference Quotation </span><span class="val" id="pv-invQuote"></span></div>
+          <div><span class="lab" id="pv-noLab">Invoice No. </span><span class="val" id="pv-invNo"></span></div>
+          <div><span class="lab" id="pv-dateLab">Invoice Date </span><span class="val" id="pv-invDate"></span></div>
+          <div id="pv-dueRow"><span class="lab">Payment Due </span><span class="val" id="pv-invDue"></span></div>
+          <div><span class="lab" id="pv-refLab">Reference Quotation </span><span class="val" id="pv-invQuote"></span></div>
         </div>
       </div>
 
@@ -184,13 +199,16 @@
         <tbody>
           <tr class="totals-row"><td colspan="2"></td><td class="lab">Subtotal</td><td class="val" id="pv-subtotal">RM 0.00</td></tr>
           <tr class="totals-row"><td colspan="2"></td><td class="lab" id="pv-sstLabel">SST (0%)</td><td class="val" id="pv-sstVal">RM 0.00</td></tr>
-          <tr class="totals-row total-due-row"><td colspan="2"></td><td class="lab">TOTAL DUE</td><td class="val" id="pv-total">RM 0.00</td></tr>
+          <tr class="totals-row total-due-row"><td colspan="2"></td><td class="lab" id="pv-totalLab">TOTAL DUE</td><td class="val" id="pv-total">RM 0.00</td></tr>
         </tbody>
       </table>
 
+      <div id="pv-scheduleWrap">
       <div class="section-heading">Payment Schedule Reference</div>
       <div class="section-body" id="pv-scheduleNote">&nbsp;</div>
+      </div>
 
+      <div id="pv-payWrap">
       <div class="section-heading">Payment Details</div>
       <table class="bank-table">
         <tr><td class="lab">Account Name:</td><td class="val" id="pv-bankAccName"></td></tr>
@@ -200,12 +218,13 @@
         <tr><td class="lab">Payment Reference:</td><td class="val" id="pv-invNo2"></td></tr>
       </table>
       <div class="footnote" id="pv-payFootnote"></div>
+      </div>
 
       <div class="section-heading">Notes</div>
       <ul class="notes-list" id="pv-notesList"></ul>
 
       <div class="sig-block">
-        <div class="thanks">Thank you for your business.</div>
+        <div class="thanks" id="pv-thanks">Thank you for your business.</div>
         <div class="prep-name" id="pv-prepName"></div>
         <div class="prep-role" id="pv-prepTitle"></div>
         <div class="prep-contact" id="pv-prepContact"></div>

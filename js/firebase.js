@@ -86,6 +86,17 @@ window.TCVFirebase = (function () {
     return new Date().toISOString();
   }
 
+  async function peekNextJobNo(year) {
+    year = parseInt(year, 10) || new Date().getFullYear();
+    const snap = await getDb().collection('counters').doc('jobs').get();
+    let last = 0;
+    if (snap.exists) {
+      const data = snap.data() || {};
+      if (parseInt(data.year, 10) === year) last = parseInt(data.last, 10) || 0;
+    }
+    return last + 1;
+  }
+
   async function nextJobNo(year) {
     year = parseInt(year, 10) || new Date().getFullYear();
     const ref = getDb().collection('counters').doc('jobs');
@@ -165,6 +176,21 @@ window.TCVFirebase = (function () {
     return result;
   }
 
+  async function getDocument(id) {
+    if (!id) return null;
+    const snap = await getDb().collection('documents').doc(id).get();
+    if (!snap.exists) return null;
+    return Object.assign({}, snap.data(), { id: snap.id });
+  }
+
+  async function listDocumentsByClient(clientId) {
+    if (!clientId) return [];
+    const snap = await getDb().collection('documents').where('clientId', '==', clientId).get();
+    return snap.docs
+      .map((d) => Object.assign({}, d.data(), { id: d.id }))
+      .sort((a, b) => String(b.issuedAt || '').localeCompare(String(a.issuedAt || '')));
+  }
+
   async function afterAuth(fn) {
     await ready;
     const loads = [];
@@ -202,7 +228,10 @@ window.TCVFirebase = (function () {
     loginHref,
     homeHref,
     nextJobNo,
+    peekNextJobNo,
     commitDocument,
+    getDocument,
+    listDocumentsByClient,
     isoNow,
     afterAuth,
     ready,

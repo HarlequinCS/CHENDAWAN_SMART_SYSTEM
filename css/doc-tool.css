@@ -1,11 +1,11 @@
 .app {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .app {
     grid-template-columns: 1fr;
     height: auto;
@@ -17,6 +17,18 @@
     max-height: none;
     height: auto;
   }
+
+  .form-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 20px 20px 28px;
+  }
+
+  .preview-panel {
+    padding: 20px 16px 48px;
+    width: 100%;
+    overflow-x: auto;
+  }
 }
 
 .form-panel {
@@ -25,6 +37,7 @@
   padding: 24px 22px 100px;
   overflow-y: auto;
   max-height: 100vh;
+  min-width: 0;
 }
 
 .back-link {
@@ -70,6 +83,31 @@
   font-size: 12.5px;
   color: var(--grey);
   margin: 0 0 20px;
+}
+
+.type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.type-toggle button {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--grey);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.type-toggle button.is-on {
+  border-color: var(--accent);
+  background: var(--light-fill);
+  color: var(--accent-dark);
 }
 
 fieldset {
@@ -331,6 +369,7 @@ input[readonly] {
   height: 100vh;
   max-height: 100vh;
   align-self: stretch;
+  min-width: 0;
 }
 
 .doc-sheet {
@@ -662,6 +701,55 @@ ul.notes-list {
   border-radius: 3px;
   margin-left: 6px;
   vertical-align: middle;
+}
+
+@media (max-width: 1199px) {
+  .sticky-actions {
+    position: sticky;
+    bottom: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .save-row {
+    flex-wrap: wrap;
+  }
+
+  .save-row button {
+    min-height: 40px;
+  }
+
+  .primary-btn,
+  .print-btn {
+    min-height: 44px;
+  }
+
+  input[type='text'],
+  input[type='number'],
+  input[type='date'],
+  input[type='month'],
+  textarea,
+  select {
+    min-height: 40px;
+    font-size: 16px;
+  }
+
+  .item-block .row3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .type-toggle button {
+    min-height: 40px;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1440px) {
+  .form-panel {
+    padding: 20px 16px 88px;
+  }
+
+  .preview-panel {
+    padding: 24px 16px 48px;
+  }
 }
 
 @media print {

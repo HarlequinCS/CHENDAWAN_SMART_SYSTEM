@@ -11,7 +11,7 @@ const VIEWS = {
   bank: { title: 'Bank & park', sub: 'Operating bank, investment account, park/withdraw, drawings, and a simple reconcile.' },
   journal: { title: 'Journal', sub: 'Edit an unlocked journal, or post a manual one. Void creates a reversing entry.' },
   reports: { title: 'Reports', sub: 'Print or download A4 packs for the books and LHDN Form B.' },
-  settings: { title: 'Settings', sub: 'Chart of accounts, bank and investment accounts, opening balances, and month lock.' },
+  settings: { title: 'Settings', sub: 'Chart of accounts, SST, backup export, bank accounts, opening balances, and month lock.' },
 };
 
 let cache = {
@@ -159,10 +159,11 @@ function vendorOptions(selected) {
   return html;
 }
 
-function workerOptions(selected) {
+function workerOptions(selected, kinds) {
   let html = '<option value="">Select a worker…</option>';
   const rows = window.TCVWorkers ? window.TCVWorkers.list() : [];
   rows.forEach((w) => {
+    if (kinds && kinds.indexOf(w.type) === -1) return;
     const kind = window.TCVWorkers.typeLabel ? window.TCVWorkers.typeLabel(w.type) : w.type;
     html +=
       '<option value="' +
@@ -724,10 +725,10 @@ function renderPay() {
     .join('');
   $('viewRoot').innerHTML =
     '<div class="panel"><h2>Pay a contractor</h2>' +
-    '<p class="muted">Money leaves the company Bank Islam account. Register people first in <a href="../../tools/workforce/">Workforce</a>. For a PDF payment advice, use <a href="../../tools/payslip/">Payslip / Payment Advice</a>.</p>' +
+    '<p class="muted">Contractors and freelancers only. Employees with EPF/SOCSO must use <a href="../../tools/payslip/">Payslip / Payment Advice</a>. Register people first in <a href="../../tools/workforce/">Workforce</a>.</p>' +
     '<form id="payForm" class="form-grid">' +
     '<div><label>Worker</label><select name="workerId">' +
-    workerOptions('') +
+    workerOptions('', ['contractor', 'freelancer']) +
     '</select></div>' +
     '<div><label>Date</label><input type="date" name="date" value="' +
     today() +
@@ -755,6 +756,16 @@ function renderPay() {
     const workerId = formVal(form, 'workerId');
     const worker = window.TCVWorkers ? window.TCVWorkers.get(workerId) : null;
     try {
+      const date = formVal(form, 'date');
+      const sameDayPsl = cache.journals.some(
+        (j) => !j.reversedBy && j.sourceType === 'PSL' && j.workerId === workerId && j.date === date
+      );
+      if (
+        sameDayPsl &&
+        !confirm('A payslip or payment advice already exists for this worker on this date. Post anyway?')
+      ) {
+        return;
+      }
       await L.payWorker({
         workerId,
         workerName: worker ? worker.name : '',
@@ -1546,6 +1557,16 @@ function renderSettings() {
     '"></div></form>' +
     '<div class="btn-row"><button class="btn" id="lockBtn">Lock month</button><button class="btn ghost" id="unlockBtn">Unlock</button></div>' +
     '<p class="muted">Locked months reject new journals (including invoice and payslip posts).</p></div>' +
+    '<div class="panel"><h2>SST</h2>' +
+    '<label class="check-row"><input type="checkbox" id="sstRegistered"' +
+    (L.getMeta().sstRegistered ? ' checked' : '') +
+    '> SST registered</label>' +
+    '<p class="muted">Leave off until SSM/SST actually applies. Does not rewrite old invoices. New invoices default to 6% when this is on.</p>' +
+    '<div class="btn-row"><button class="btn" id="sstSaveBtn">Save SST setting</button></div></div>' +
+    '<div class="panel"><h2>Backup</h2>' +
+    '<p class="muted">GitHub Pages has no undo if Firebase is wiped. Export a JSON dump of clients, projects, journals, and related collections. Journals also download as CSV for a spreadsheet. Export only — there is no import.</p>' +
+    '<div class="btn-row"><button class="btn" id="backupJsonBtn">Download JSON</button>' +
+    '<button class="btn ghost" id="backupCsvBtn">Download journals CSV</button></div></div>' +
     '<div class="panel"><h2>Bank &amp; investment accounts</h2>' +
     '<form id="bankForm" class="form-grid">' +
     '<input type="hidden" name="id" value="">' +
@@ -1611,6 +1632,39 @@ function renderSettings() {
       status('Month unlocked.');
     } catch (e) {
       status(e.message);
+    }
+  });
+  $('sstSaveBtn').addEventListener('click', async () => {
+    try {
+      await L.saveMeta({ sstRegistered: !!$('sstRegistered').checked });
+      status(
+        L.getMeta().sstRegistered
+          ? 'SST registered. New invoices default to 6%.'
+          : 'SST left unregistered. New invoices default to 0%.'
+      );
+    } catch (e) {
+      status(e.message);
+    }
+  });
+  $('backupJsonBtn').addEventListener('click', async () => {
+    try {
+      status('Preparing backup…');
+      const data = await L.exportBackup();
+      const day = today();
+      D.downloadBlob('tcv-backup-' + day + '.json', JSON.stringify(data, null, 2), 'application/json');
+      status('JSON backup downloaded.');
+    } catch (e) {
+      status(e.message || 'Could not export backup.');
+    }
+  });
+  $('backupCsvBtn').addEventListener('click', async () => {
+    try {
+      status('Preparing journals CSV…');
+      const journals = await L.listJournals();
+      D.downloadBlob('tcv-journals-' + today() + '.csv', L.journalsCsv(journals), 'text/csv');
+      status('Journals CSV downloaded.');
+    } catch (e) {
+      status(e.message || 'Could not export journals.');
     }
   });
   $('bankSaveBtn').addEventListener('click', async () => {
