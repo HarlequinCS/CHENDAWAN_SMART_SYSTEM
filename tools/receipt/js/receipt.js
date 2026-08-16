@@ -132,32 +132,60 @@ async function refreshRefSelect() {
       invoices = await window.TCVLedger.listInvoices();
     } catch (e) {}
   }
-  await D.fillIssuedSelect({
+  const projectId = (document.getElementById('projectId') || {}).value || '';
+  const rows = await D.fillIssuedSelect({
     selectId: 'refInvoice',
     types: ['INV'],
-    emptyLabel: 'No invoice',
+    needProjectLabel: 'Select a project first',
+    emptyLabel: 'Issued invoices…',
+    noneLabel: 'No invoices issued yet',
     labelFn: function (d) {
       const row = invoices.find((i) => i.number === d.number || i.id === d.id);
       const bal = row ? Math.round((parseFloat(row.balance) || 0) * 100) / 100 : null;
       return (d.number || 'INV') + (bal == null ? '' : '  ·  RM ' + D.fmt(bal) + ' remaining');
     },
   });
+  const pick = document.getElementById('refInvoicePick');
+  if (!pick || !projectId) return;
+  const seen = {};
+  Array.prototype.forEach.call(pick.options, (o) => {
+    if (o.value) seen[o.value] = true;
+  });
+  let added = 0;
+  invoices.forEach((row) => {
+    if (!row.number || seen[row.number] || row.projectId !== projectId) return;
+    const opt = document.createElement('option');
+    opt.value = row.number;
+    const bal = Math.round((parseFloat(row.balance) || 0) * 100) / 100;
+    opt.textContent = row.number + '  ·  RM ' + D.fmt(bal) + ' remaining';
+    pick.appendChild(opt);
+    seen[row.number] = true;
+    added++;
+  });
+  if (((rows && rows.length) || added) && pick.options[0] && !pick.options[0].value) {
+    pick.options[0].textContent = 'Issued invoices…';
+  }
 }
 
-async function fillFromInvoice(docId) {
-  if (!docId || !window.TCVFirebase) return;
-  const doc = await window.TCVFirebase.getDocument(docId);
-  if (!doc || doc.type !== 'INV') return;
-  const fields = (doc.payload && doc.payload.fields) || {};
+async function fillFromInvoice(docId, number) {
   const setIf = (id, v) => {
     const el = document.getElementById(id);
     if (el && v) el.value = v;
   };
-  setIf('projName', fields.projName);
-  setIf('projFor', fields.projStage);
+  let fields = {};
+  let invNumber = String(number || '').trim();
+  if (docId && window.TCVFirebase) {
+    const doc = await window.TCVFirebase.getDocument(docId);
+    if (doc && doc.type === 'INV') {
+      fields = (doc.payload && doc.payload.fields) || {};
+      invNumber = doc.number || invNumber;
+      setIf('projName', fields.projName);
+      setIf('projFor', fields.projStage);
+    }
+  }
   let remaining = parseFloat(fields.amount);
-  if (window.TCVLedger && window.TCVLedger.findInvoiceByNumber) {
-    const inv = await window.TCVLedger.findInvoiceByNumber(doc.number);
+  if (window.TCVLedger && window.TCVLedger.findInvoiceByNumber && invNumber) {
+    const inv = await window.TCVLedger.findInvoiceByNumber(invNumber);
     if (inv) remaining = parseFloat(inv.balance);
   }
   if (!isNaN(remaining) && remaining >= 0) {
@@ -245,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (window.TCVLedger) {
         window.TCVLedger.ensureSeeded().then(() => {
+          refreshRefSelect();
           const sel = document.getElementById('bankAccountId');
           if (!sel) return;
           const banks = window.TCVLedger.listBankAccounts();
@@ -277,8 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
       document.getElementById('refInvoice').addEventListener('change', () => {
         const docId = D.selectedIssuedId('refInvoice');
-        if (docId) {
-          fillFromInvoice(docId).catch((e) => {
+        const number = document.getElementById('refInvoice').value.trim();
+        if (docId || number) {
+          fillFromInvoice(docId, number).catch((e) => {
             D.setStatus(e.message || 'Could not load that invoice.');
           });
         } else if (numbering) numbering.refresh();

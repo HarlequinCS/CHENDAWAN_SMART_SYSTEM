@@ -79,9 +79,13 @@
         </div>
       </div>
       <label id="quoteLabel">Reference quotation no.</label>
-      <input type="text" id="invQuote" list="invQuoteList" autocomplete="off" placeholder="Select from list or type a custom no.">
-      <datalist id="invQuoteList"></datalist>
-      <p class="field-hint" id="quoteHint">Pick an issued quotation, or type a custom reference.</p>
+      <div class="combo-field">
+        <select id="invQuotePick" aria-label="Issued quotations">
+          <option value="">Select a project first</option>
+        </select>
+        <input type="text" id="invQuote" autocomplete="off" placeholder="Or type a custom quotation no.">
+      </div>
+      <p class="field-hint" id="quoteHint">Pick an issued quotation from the list, or type a custom reference.</p>
       <input type="hidden" id="sourceInvId" value="">
     </fieldset>
 

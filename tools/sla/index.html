@@ -43,8 +43,13 @@
       <input type="text" id="docNo" readonly placeholder="Select a service code">
       <p class="field-hint" id="docNoHint"></p>
       <label>Related MSA / quotation (optional)</label>
-      <input type="text" id="relatedNo" list="relatedNoList" autocomplete="off" placeholder="Select from list or type a custom no.">
-      <datalist id="relatedNoList"></datalist>
+      <div class="combo-field">
+        <select id="relatedNoPick" aria-label="Issued documents">
+          <option value="">Select a project first</option>
+        </select>
+        <input type="text" id="relatedNo" autocomplete="off" placeholder="Or type a custom document no.">
+      </div>
+      <p class="field-hint">Pick an issued MSA or quotation from the list, or type a custom reference.</p>
     </fieldset>
 
     <fieldset>

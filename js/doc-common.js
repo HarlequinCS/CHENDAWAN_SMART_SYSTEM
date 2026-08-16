@@ -273,19 +273,45 @@ window.TCVDoc = (function () {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  function bindComboPick(input, pick) {
+    if (!input || !pick || pick.getAttribute('data-combo') === '1') return;
+    pick.setAttribute('data-combo', '1');
+    pick.addEventListener('change', () => {
+      input.value = pick.value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    input.addEventListener('input', () => {
+      const value = String(input.value || '').trim();
+      let match = '';
+      for (let i = 0; i < pick.options.length; i++) {
+        if (String(pick.options[i].value || '').trim() === value) {
+          match = pick.options[i].value;
+          break;
+        }
+      }
+      pick.value = match;
+    });
+  }
+
+  function issuedListEl(input) {
+    if (!input) return null;
+    const pick = document.getElementById(input.id + 'Pick');
+    if (pick) return pick;
+    const listId = input.getAttribute('list');
+    if (listId) return document.getElementById(listId);
+    if (input.tagName === 'SELECT') return input;
+    return null;
+  }
+
   function selectedIssuedId(inputId) {
     const el = document.getElementById(inputId);
     if (!el) return '';
     const value = String(el.value || '').trim();
     if (!value) return '';
-    if (el.tagName === 'SELECT') {
-      if (el.selectedIndex < 0) return '';
-      const opt = el.options[el.selectedIndex];
-      return (opt && opt.getAttribute('data-id')) || '';
-    }
-    const list = el.getAttribute('list') ? document.getElementById(el.getAttribute('list')) : null;
+    const list = issuedListEl(el);
     if (!list) return '';
-    const opts = list.querySelectorAll('option');
+    const opts = list.options || list.querySelectorAll('option');
     for (let i = 0; i < opts.length; i++) {
       if (String(opts[i].value || '').trim() === value) return opts[i].getAttribute('data-id') || '';
     }
@@ -296,9 +322,9 @@ window.TCVDoc = (function () {
     opts = opts || {};
     const el = document.getElementById(opts.selectId);
     if (!el) return [];
-    const listId = el.getAttribute('list');
-    const list = listId ? document.getElementById(listId) : el.tagName === 'SELECT' ? el : null;
+    const list = issuedListEl(el);
     if (!list) return [];
+    bindComboPick(el, document.getElementById(el.id + 'Pick'));
     const projectId =
       opts.projectId != null
         ? opts.projectId
@@ -307,14 +333,13 @@ window.TCVDoc = (function () {
     const current = opts.value !== undefined ? opts.value : el.value;
     const isSelect = list.tagName === 'SELECT';
     list.innerHTML = '';
-    if (isSelect) {
-      const empty = document.createElement('option');
-      empty.value = '';
-      empty.textContent = opts.emptyLabel || 'Select…';
-      list.appendChild(empty);
-    }
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = opts.emptyLabel || 'Select…';
+    list.appendChild(empty);
     if (!projectId || !window.TCVProjects || !window.TCVProjects.listDocuments) {
-      if (isSelect && current) el.value = current;
+      empty.textContent = opts.needProjectLabel || 'Select a project first';
+      if (current) el.value = current;
       return [];
     }
     let docs = [];
@@ -324,16 +349,27 @@ window.TCVDoc = (function () {
       return [];
     }
     const rows = docs.filter((d) => !types.length || types.indexOf(d.type) >= 0);
+    if (!rows.length) empty.textContent = opts.noneLabel || empty.textContent;
     rows.forEach((d) => {
       const opt = document.createElement('option');
       opt.value = d.number || '';
       opt.setAttribute('data-id', d.id || '');
-      const label =
+      opt.textContent =
         typeof opts.labelFn === 'function' ? opts.labelFn(d) || d.number || d.type : d.number || d.type;
-      opt.textContent = label;
       list.appendChild(opt);
     });
     if (current) el.value = current;
+    if (isSelect && list !== el) {
+      list.value = '';
+      if (current) {
+        for (let i = 0; i < list.options.length; i++) {
+          if (String(list.options[i].value || '').trim() === String(current).trim()) {
+            list.value = list.options[i].value;
+            break;
+          }
+        }
+      }
+    }
     return rows;
   }
 
@@ -373,6 +409,16 @@ window.TCVDoc = (function () {
       printBtn.addEventListener('click', () => window.print());
     }
   }
+
+  const OFFICIAL_PRINT_TITLE = 'OFFICIAL AND CONFIDENTIAL DOCUMENT';
+  let titleBeforePrint = '';
+  window.addEventListener('beforeprint', () => {
+    titleBeforePrint = document.title;
+    document.title = OFFICIAL_PRINT_TITLE;
+  });
+  window.addEventListener('afterprint', () => {
+    if (titleBeforePrint) document.title = titleBeforePrint;
+  });
 
   function amountInWords(n) {
     n = Math.round((parseFloat(n) || 0) * 100) / 100;

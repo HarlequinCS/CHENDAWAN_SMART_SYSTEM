@@ -305,9 +305,15 @@ function applyKindUi() {
   setText(
     'quoteHint',
     cn
-      ? 'Pick an issued invoice or type the invoice number. Remaining AR is credited when the invoice is in the books.'
-      : 'Pick an issued quotation, or type a custom reference.'
+      ? 'Pick an issued invoice from the list, or type the invoice number.'
+      : 'Pick an issued quotation from the list, or type a custom reference.'
   );
+  const quoteInput = document.getElementById('invQuote');
+  if (quoteInput) {
+    quoteInput.placeholder = cn ? 'Or type a custom invoice no.' : 'Or type a custom quotation no.';
+  }
+  const quotePick = document.getElementById('invQuotePick');
+  if (quotePick) quotePick.setAttribute('aria-label', cn ? 'Issued invoices' : 'Issued quotations');
   setText('kindHint', cn
     ? 'Select the invoice to reverse. Remaining AR is filled in; reduce lines for a partial credit.'
     : 'Use a credit note to reverse part of an issued invoice without editing it.');
@@ -367,7 +373,9 @@ async function refreshQuoteSelect() {
   await D.fillIssuedSelect({
     selectId: 'invQuote',
     types: cn ? ['INV'] : ['QUO'],
-    emptyLabel: cn ? 'Select an invoice…' : 'No quotation',
+    needProjectLabel: 'Select a project first',
+    emptyLabel: cn ? 'Issued invoices…' : 'Issued quotations…',
+    noneLabel: cn ? 'No invoices issued yet' : 'No quotations issued yet',
     labelFn: cn
       ? function (d) {
           const row = invoices.find((i) => i.number === d.number || i.id === d.id);

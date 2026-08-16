@@ -58,18 +58,16 @@
       <label>Receipt no.</label>
       <input type="text" id="receiptNo" readonly placeholder="Select a project">
       <p class="field-hint" id="receiptNoHint"></p>
-      <div class="row2">
-        <div>
-          <label>Date received</label>
-          <input type="date" id="receiptDate">
-        </div>
-        <div>
-          <label>Reference invoice</label>
-          <input type="text" id="refInvoice" list="refInvoiceList" autocomplete="off" placeholder="Select or type">
-          <datalist id="refInvoiceList"></datalist>
-        </div>
+      <label>Date received</label>
+      <input type="date" id="receiptDate">
+      <label>Reference invoice</label>
+      <div class="combo-field">
+        <select id="refInvoicePick" aria-label="Issued invoices">
+          <option value="">Select a project first</option>
+        </select>
+        <input type="text" id="refInvoice" autocomplete="off" placeholder="Or type a custom invoice no.">
       </div>
-      <p class="field-hint">Pick an issued invoice, or type a custom reference.</p>
+      <p class="field-hint">Pick an issued invoice from the list, or type a custom reference.</p>
     </fieldset>
 
     <fieldset>

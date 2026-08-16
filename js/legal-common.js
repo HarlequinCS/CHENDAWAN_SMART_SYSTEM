@@ -138,7 +138,9 @@ window.TCVLegal = (function () {
         window.TCVDoc.fillIssuedSelect({
           selectId: opts.relatedId,
           types: opts.relatedTypes || ['QUO', 'INV'],
-          emptyLabel: 'None',
+          needProjectLabel: 'Select a project first',
+          emptyLabel: 'Issued documents…',
+          noneLabel: 'No matching documents yet',
         });
       }
     }
@@ -240,7 +242,9 @@ window.TCVLegal = (function () {
                   window.TCVDoc.fillIssuedSelect({
                     selectId: opts.relatedId,
                     types: opts.relatedTypes || ['QUO', 'INV'],
-                    emptyLabel: 'None',
+                    needProjectLabel: 'Select a project first',
+                    emptyLabel: 'Issued documents…',
+                    noneLabel: 'No matching documents yet',
                   });
                 }
                 if (numbering) numbering.refresh();
