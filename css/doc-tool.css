@@ -386,7 +386,7 @@ input[readonly] {
   margin: 0 auto;
   background-color: #fff;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  padding: 18mm 18mm 22mm;
+  padding: 20mm 18mm 22mm;
   font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
   color: var(--ink);
 }
@@ -1004,7 +1004,7 @@ ul.notes-list li + li {
     min-height: 297mm;
     margin: 0;
     background: #fff;
-    padding: 18mm 18mm 22mm;
+    padding: 20mm 18mm 22mm;
   }
 
   .meta-grid,

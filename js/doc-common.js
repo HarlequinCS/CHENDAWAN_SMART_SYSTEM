@@ -74,8 +74,9 @@ window.TCVDoc = (function () {
   function pdfOptions(el, filename) {
     const widthPx = 794;
     const heightPx = Math.max(el.scrollHeight, el.offsetHeight, 1);
+    const capturePad = '12px 68px 12px';
     return {
-      margin: 0,
+      margin: [57, 0, 62, 0],
       filename: filename || 'document.pdf',
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
@@ -113,7 +114,7 @@ window.TCVDoc = (function () {
           sheet.style.overflow = 'visible';
           sheet.style.backgroundImage = 'none';
           sheet.style.height = 'auto';
-          sheet.style.padding = '68px 68px 83px';
+          sheet.style.padding = capturePad;
           sheet.querySelectorAll('.doc-header').forEach((n) => asTable(n, '0', 'bottom'));
           sheet.querySelectorAll('.meta-grid').forEach((n) => asTable(n, '14px 0', 'top'));
           sheet.querySelectorAll('.doc-ref-card').forEach((n) => asTable(n, '18px 0', 'top'));
@@ -156,7 +157,7 @@ window.TCVDoc = (function () {
     el.style.width = '794px';
     el.style.maxWidth = '794px';
     el.style.boxSizing = 'border-box';
-    el.style.padding = '68px 68px 83px';
+    el.style.padding = '12px 68px 12px';
     el.style.overflow = 'visible';
     el.style.height = 'auto';
     el.style.minHeight = '0';
