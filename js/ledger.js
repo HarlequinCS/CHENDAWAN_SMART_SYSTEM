@@ -5,6 +5,7 @@
 window.TCVLedger = (function () {
   const CODES = {
     BANK: '1000',
+    INVESTMENT: '1010',
     AR: '1100',
     AP: '2000',
     SST: '2100',
@@ -38,6 +39,7 @@ window.TCVLedger = (function () {
 
   const SEED_ACCOUNTS = [
     { code: '1000', name: 'Bank — Bank Islam', type: 'asset', taxFlag: '' },
+    { code: '1010', name: 'Investment account', type: 'asset', taxFlag: '' },
     { code: '1100', name: 'Accounts receivable', type: 'asset', taxFlag: '' },
     { code: '2000', name: 'Accounts payable', type: 'liability', taxFlag: '' },
     { code: '2100', name: 'SST payable', type: 'liability', taxFlag: 'sst' },
@@ -75,7 +77,17 @@ window.TCVLedger = (function () {
     accountName: 'Saiful Iqbal',
     accountNo: '01050026135751',
     glCode: '1000',
+    kind: 'operating',
     openingBalance: 380,
+  };
+
+  const INVESTMENT_ACCOUNT = {
+    name: 'Investment account',
+    accountName: 'Saiful Iqbal',
+    accountNo: '',
+    glCode: '1010',
+    kind: 'investment',
+    openingBalance: 0,
   };
 
   let accounts = [];
@@ -112,16 +124,30 @@ window.TCVLedger = (function () {
     return accounts.slice().sort((a, b) => String(a.code).localeCompare(String(b.code)));
   }
 
+  function isInvestmentAccount(bank) {
+    if (!bank) return false;
+    return bank.kind === 'investment' || bank.glCode === CODES.INVESTMENT;
+  }
+
   function listBankAccounts() {
-    return bankAccounts.slice();
+    return bankAccounts.slice().sort((a, b) => {
+      const ak = isInvestmentAccount(a) ? 1 : 0;
+      const bk = isInvestmentAccount(b) ? 1 : 0;
+      if (ak !== bk) return ak - bk;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
   }
 
   function defaultBankAccount() {
     if (meta.defaultBankAccountId) {
       const found = bankAccounts.find((b) => b.id === meta.defaultBankAccountId);
-      if (found) return found;
+      if (found && !isInvestmentAccount(found)) return found;
     }
-    return bankAccounts[0] || null;
+    return listBankAccounts().find((b) => !isInvestmentAccount(b)) || bankAccounts[0] || null;
+  }
+
+  function hasInvestmentAccount() {
+    return bankAccounts.some(isInvestmentAccount);
   }
 
   function bankGlCode(bankAccountId) {
@@ -193,6 +219,7 @@ window.TCVLedger = (function () {
       accountName: MAIN_BANK.accountName,
       accountNo: MAIN_BANK.accountNo,
       glCode: MAIN_BANK.glCode,
+      kind: MAIN_BANK.kind,
       openingBalance: MAIN_BANK.openingBalance,
       openingDate: date,
       createdAt: now(),
@@ -237,11 +264,38 @@ window.TCVLedger = (function () {
     await loadCaches();
     await seedMissingAccounts();
     await seedMainBankAndCapital();
+    await seedInvestmentAccount();
     seeded = true;
   }
 
+  async function seedInvestmentAccount() {
+    if (hasInvestmentAccount()) return;
+    const ref = db().collection('bankAccounts').doc();
+    await ref.set({
+      name: INVESTMENT_ACCOUNT.name,
+      accountName: INVESTMENT_ACCOUNT.accountName,
+      accountNo: INVESTMENT_ACCOUNT.accountNo,
+      glCode: INVESTMENT_ACCOUNT.glCode,
+      kind: INVESTMENT_ACCOUNT.kind,
+      openingBalance: INVESTMENT_ACCOUNT.openingBalance,
+      openingDate: '',
+      createdAt: now(),
+      updatedAt: now(),
+    });
+    await loadCaches();
+  }
+
   async function ensureSeeded() {
-    if (seeded && accounts.length && meta.seedVersion === SEED_VERSION && bankAccounts.length) return;
+    if (
+      seeded &&
+      accounts.length &&
+      meta.seedVersion === SEED_VERSION &&
+      bankAccounts.length &&
+      hasInvestmentAccount() &&
+      accountByCode(CODES.INVESTMENT)
+    ) {
+      return;
+    }
     await loadCaches();
     if (meta.seedVersion !== SEED_VERSION) {
       await resetLedgerBooks();
@@ -249,6 +303,7 @@ window.TCVLedger = (function () {
     }
     await seedMissingAccounts();
     if (!bankAccounts.length) await seedMainBankAndCapital();
+    await seedInvestmentAccount();
     seeded = true;
   }
 
@@ -280,7 +335,10 @@ window.TCVLedger = (function () {
       name: String(data.name || '').trim(),
       accountName: String(data.accountName || '').trim(),
       accountNo: String(data.accountNo || '').trim(),
-      glCode: String(data.glCode || CODES.BANK).trim(),
+      kind: data.kind === 'investment' ? 'investment' : 'operating',
+      glCode: String(
+        data.glCode || (data.kind === 'investment' ? CODES.INVESTMENT : CODES.BANK)
+      ).trim(),
       openingBalance: money(data.openingBalance),
       openingDate: data.openingDate || '',
       updatedAt: now(),
@@ -288,7 +346,9 @@ window.TCVLedger = (function () {
     if (!data.id) row.createdAt = now();
     await ref.set(row, { merge: true });
     await loadCaches();
-    if (!meta.defaultBankAccountId) await saveMeta({ defaultBankAccountId: ref.id });
+    if (!meta.defaultBankAccountId && row.kind !== 'investment') {
+      await saveMeta({ defaultBankAccountId: ref.id });
+    }
     return Object.assign({ id: ref.id }, row);
   }
 
@@ -363,6 +423,7 @@ window.TCVLedger = (function () {
       workerId: entry.workerId || '',
       vendorId: entry.vendorId || '',
       bankAccountId: entry.bankAccountId || '',
+      fromBankAccountId: entry.fromBankAccountId || '',
       lines,
       debitTotal: dr,
       creditTotal: cr,
@@ -1080,19 +1141,49 @@ window.TCVLedger = (function () {
   async function recordTransfer(data) {
     await ensureSeeded();
     const amount = money(data.amount);
+    if (amount <= 0) throw new Error('Enter an amount to transfer.');
     const date = data.date || window.TCVNumbers.isoToday();
+    const from = bankAccounts.find((b) => b.id === data.fromBankId);
+    const to = bankAccounts.find((b) => b.id === data.toBankId);
     const fromCode = bankGlCode(data.fromBankId);
     const toCode = bankGlCode(data.toBankId);
-    if (fromCode === toCode && data.fromBankId === data.toBankId) {
-      throw new Error('Choose two different bank accounts.');
+    if (!from || !to || data.fromBankId === data.toBankId) {
+      throw new Error('Choose two different accounts.');
+    }
+    let memo = data.memo;
+    if (!memo) {
+      if (isInvestmentAccount(to) && !isInvestmentAccount(from)) memo = 'Park funds in investment';
+      else if (isInvestmentAccount(from) && !isInvestmentAccount(to)) memo = 'Withdraw from investment';
+      else memo = 'Bank transfer';
     }
     return postJournal({
       date,
-      memo: data.memo || 'Bank transfer',
+      memo,
       sourceType: 'XFER',
       sourceId: 'xfer_' + Date.now(),
       bankAccountId: data.toBankId || '',
-      lines: [line(toCode, amount, 0), line(fromCode, 0, amount)],
+      fromBankAccountId: data.fromBankId || '',
+      lines: [line(toCode, amount, 0, memo), line(fromCode, 0, amount, memo)],
+      allowDuplicate: true,
+    });
+  }
+
+  async function recordInvestmentReturn(data) {
+    await ensureSeeded();
+    const amount = money(data.amount);
+    if (amount <= 0) throw new Error('Enter the return amount.');
+    const date = data.date || window.TCVNumbers.isoToday();
+    const bankId = data.bankAccountId || '';
+    const bank = bankAccounts.find((b) => b.id === bankId);
+    const bankCode = bankGlCode(bankId);
+    if (!isInvestmentAccount(bank)) throw new Error('Pick the investment account.');
+    return postJournal({
+      date,
+      memo: data.memo || 'Investment return',
+      sourceType: 'INVRET',
+      sourceId: 'invret_' + Date.now(),
+      bankAccountId: bankId,
+      lines: [line(bankCode, amount, 0, data.memo || 'Investment return'), line(CODES.OTHER_INCOME, 0, amount)],
       allowDuplicate: true,
     });
   }
@@ -1223,6 +1314,7 @@ window.TCVLedger = (function () {
     accountByCode,
     accountById,
     defaultBankAccount,
+    isInvestmentAccount,
     bankGlCode,
     saveMeta,
     getMeta: function () {
@@ -1253,6 +1345,7 @@ window.TCVLedger = (function () {
     listWorkerPayments,
     recordDrawing,
     recordTransfer,
+    recordInvestmentReturn,
     recordOpening,
     balancesFromJournals,
     agingBuckets,

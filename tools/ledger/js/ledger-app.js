@@ -8,10 +8,10 @@ const VIEWS = {
   purchases: { title: 'Purchases (AP)', sub: 'Supplier bills, contractor claims, and bill payments.' },
   pay: { title: 'Pay workforce', sub: 'Pay contractors and freelancers from Bank Islam. Employees with EPF/SOCSO still use the Payslip tool.' },
   expenses: { title: 'Expenses', sub: 'Paid-now costs. Drawings are not expenses — record those on Bank.' },
-  bank: { title: 'Bank', sub: 'Per-account register, transfers, drawings, and a simple reconcile.' },
+  bank: { title: 'Bank & park', sub: 'Operating bank, investment account, park/withdraw, drawings, and a simple reconcile.' },
   journal: { title: 'Journal', sub: 'Edit an unlocked journal, or post a manual one. Void creates a reversing entry.' },
   reports: { title: 'Reports', sub: 'Print or download A4 packs for the books and LHDN Form B.' },
-  settings: { title: 'Settings', sub: 'Chart of accounts, bank accounts, opening balances, and month lock.' },
+  settings: { title: 'Settings', sub: 'Chart of accounts, bank and investment accounts, opening balances, and month lock.' },
 };
 
 let cache = {
@@ -82,6 +82,14 @@ function accountOptions(selected, filterFn) {
     .join('');
 }
 
+function bankLabel(b) {
+  const bits = [b.name];
+  if (b.accountName) bits.push(b.accountName);
+  if (b.accountNo) bits.push(b.accountNo);
+  if (L.isInvestmentAccount(b)) bits.push('parked');
+  return bits.join(' · ');
+}
+
 function bankOptions(selected) {
   return L.listBankAccounts()
     .map((b) => {
@@ -91,11 +99,33 @@ function bankOptions(selected) {
         '"' +
         (b.id === selected ? ' selected' : '') +
         '>' +
-        esc(b.name + (b.accountName ? ' · ' + b.accountName : '') + (b.accountNo ? ' · ' + b.accountNo : '')) +
+        esc(bankLabel(b)) +
         '</option>'
       );
     })
     .join('');
+}
+
+function firstInvestment() {
+  return L.listBankAccounts().find((b) => L.isInvestmentAccount(b)) || null;
+}
+
+function glNet(bals, code) {
+  return (bals[code] && bals[code].net) || 0;
+}
+
+function cashSplit(bals) {
+  const seen = {};
+  let operating = 0;
+  let invested = 0;
+  L.listBankAccounts().forEach((b) => {
+    if (seen[b.glCode]) return;
+    seen[b.glCode] = true;
+    const n = glNet(bals, b.glCode);
+    if (L.isInvestmentAccount(b)) invested += n;
+    else operating += n;
+  });
+  return { operating, invested, total: L.money(operating + invested) };
 }
 
 function projectOptions(selected) {
@@ -211,14 +241,7 @@ function renderDashboard() {
   const month = thisMonth();
   const bals = L.balancesFromJournals(cache.journals);
   const monthBals = L.balancesFromJournals(cache.journals, { from: month + '-01', to: month + '-31' });
-  let cash = 0;
-  const seenGl = {};
-  L.listBankAccounts().forEach((b) => {
-    if (!seenGl[b.glCode]) {
-      seenGl[b.glCode] = true;
-      cash += (bals[b.glCode] && bals[b.glCode].net) || 0;
-    }
-  });
+  const cash = cashSplit(bals);
   const ar = cache.invoices.reduce((s, i) => s + L.money(i.balance), 0);
   const ap = cache.bills.reduce((s, i) => s + L.money(i.balance), 0);
   let income = 0;
@@ -252,13 +275,36 @@ function renderDashboard() {
     })
     .filter((r) => r.billed || r.collected || r.costs);
 
+  const cashRows = L.listBankAccounts()
+    .map((b) => {
+      const n = glNet(bals, b.glCode);
+      return (
+        '<tr><td>' +
+        esc(b.name) +
+        '</td><td>' +
+        esc(L.isInvestmentAccount(b) ? 'Invested' : 'Operating') +
+        '</td><td class="num">' +
+        rm(n) +
+        '</td></tr>'
+      );
+    })
+    .join('');
+
   $('viewRoot').innerHTML =
     '<div class="kpi-grid">' +
-    kpi('Cash in bank', rm(cash)) +
+    kpi('Cash in bank', rm(cash.operating)) +
+    kpi('Invested / parked', rm(cash.invested)) +
     kpi('AR outstanding', rm(ar)) +
     kpi('AP outstanding', rm(ap)) +
     kpi('This month P&amp;L', rm(income - expense)) +
     '</div>' +
+    '<div class="panel"><h2>Where the money sits</h2>' +
+    '<table class="data-table"><thead><tr><th>Account</th><th>Kind</th><th class="num">Balance</th></tr></thead><tbody>' +
+    cashRows +
+    '<tr><td><strong>Total liquid</strong></td><td></td><td class="num"><strong>' +
+    rm(cash.total) +
+    '</strong></td></tr></tbody></table>' +
+    '<p class="muted">Park funds from Bank &amp; park. Moving money to the investment account is not an expense.</p></div>' +
     '<div class="panel"><h2>Unpaid invoices aging</h2>' +
     '<table class="data-table"><thead><tr><th>Current (0–30)</th><th>31–60</th><th>61–90</th><th>90+</th></tr></thead>' +
     '<tbody><tr><td>' +
@@ -853,7 +899,12 @@ function renderBank() {
   const banks = L.listBankAccounts();
   const selected = ($('bankPick') && $('bankPick').value) || (banks[0] && banks[0].id) || '';
   const bank = banks.find((b) => b.id === selected) || banks[0];
+  const invested = firstInvestment();
   const lines = bank ? bankLines(bank) : [];
+  const viewingInvest = bank && L.isInvestmentAccount(bank);
+  const defaultTo = viewingInvest
+    ? (L.defaultBankAccount() || {}).id
+    : (invested && invested.id) || '';
   let run = 0;
   const body = lines
     .map((l) => {
@@ -881,26 +932,20 @@ function renderBank() {
     .join('');
   $('viewRoot').innerHTML =
     '<div class="panel"><h2>Account</h2>' +
-    '<div class="form-grid"><div><label>Bank account</label><select id="bankPick">' +
+    '<div class="form-grid"><div><label>Account</label><select id="bankPick">' +
     bankOptions(bank ? bank.id : '') +
     '</select></div>' +
     '<div><label>Ledger balance</label><input value="' +
     (bank ? rm(run) : '') +
     '" readonly></div>' +
-    '<div><label>Statement balance (RM)</label><input id="stmtBal" type="number" step="0.01" placeholder="Type the bank statement total"></div></div>' +
-    '<p class="muted" id="reconDiff">Difference shows after you enter a statement balance.</p></div>' +
-    '<div class="panel"><h2>Owner drawing</h2>' +
-    '<form id="drawForm" class="form-grid">' +
-    '<div><label>Date</label><input type="date" name="date" value="' +
-    today() +
-    '"></div>' +
-    '<div><label>Amount (RM)</label><input type="number" step="0.01" name="amount"></div>' +
-    '<div><label>From bank</label><select name="bankAccountId">' +
-    bankOptions(bank ? bank.id : '') +
-    '</select></div>' +
-    '<div><label>Memo</label><input type="text" name="memo" value="Owner drawing"></div>' +
-    '</form><div class="btn-row"><button class="btn" id="drawBtn">Record drawing</button></div></div>' +
-    '<div class="panel"><h2>Bank transfer</h2>' +
+    '<div><label>Statement balance (RM)</label><input id="stmtBal" type="number" step="0.01" placeholder="Type the statement total"></div></div>' +
+    '<p class="muted" id="reconDiff">' +
+    (viewingInvest
+      ? 'Parked money stays a company asset. It is not an expense and does not hit the P&amp;L until you record a return.'
+      : 'Difference shows after you enter a statement balance.') +
+    '</p></div>' +
+    '<div class="panel"><h2>Park or withdraw</h2>' +
+    '<p class="muted">Move money between Bank Islam and the investment account. This only swaps assets — cash in bank goes down, invested goes up, or the reverse.</p>' +
     '<form id="xferForm" class="form-grid">' +
     '<div><label>Date</label><input type="date" name="date" value="' +
     today() +
@@ -910,9 +955,33 @@ function renderBank() {
     bankOptions(bank ? bank.id : '') +
     '</select></div>' +
     '<div><label>To</label><select name="toBankId">' +
-    bankOptions('') +
-    '</select></div></form>' +
+    bankOptions(defaultTo) +
+    '</select></div>' +
+    '<div class="span-2"><label>Memo</label><input type="text" name="memo" placeholder="Park funds in investment"></div>' +
+    '</form>' +
     '<div class="btn-row"><button class="btn" id="xferBtn">Transfer</button></div></div>' +
+    (viewingInvest
+      ? '<div class="panel"><h2>Investment return</h2>' +
+        '<p class="muted">When the parked money earns a dividend or profit, record it here. That increases the investment balance and Other income.</p>' +
+        '<form id="retForm" class="form-grid">' +
+        '<div><label>Date</label><input type="date" name="date" value="' +
+        today() +
+        '"></div>' +
+        '<div><label>Amount (RM)</label><input type="number" step="0.01" name="amount"></div>' +
+        '<div class="span-2"><label>Memo</label><input type="text" name="memo" value="Investment return"></div>' +
+        '</form><div class="btn-row"><button class="btn" id="retBtn">Record return</button></div></div>'
+      : '') +
+    '<div class="panel"><h2>Owner drawing</h2>' +
+    '<form id="drawForm" class="form-grid">' +
+    '<div><label>Date</label><input type="date" name="date" value="' +
+    today() +
+    '"></div>' +
+    '<div><label>Amount (RM)</label><input type="number" step="0.01" name="amount"></div>' +
+    '<div><label>From</label><select name="bankAccountId">' +
+    bankOptions(bank ? bank.id : '') +
+    '</select></div>' +
+    '<div><label>Memo</label><input type="text" name="memo" value="Owner drawing"></div>' +
+    '</form><div class="btn-row"><button class="btn" id="drawBtn">Record drawing</button></div></div>' +
     '<div class="panel"><h2>Register</h2>' +
     (body
       ? '<table class="data-table"><thead><tr><th>Date</th><th>Memo</th><th>Source</th><th class="num">In</th><th class="num">Out</th><th class="num">Balance</th><th></th></tr></thead><tbody>' +
@@ -951,6 +1020,7 @@ function renderBank() {
         amount: formVal(form, 'amount'),
         fromBankId: formVal(form, 'fromBankId'),
         toBankId: formVal(form, 'toBankId'),
+        memo: formVal(form, 'memo'),
       });
       status('Transfer posted.');
       await reload();
@@ -958,6 +1028,23 @@ function renderBank() {
       status(e.message || 'Could not transfer.');
     }
   });
+  if ($('retBtn')) {
+    $('retBtn').addEventListener('click', async () => {
+      const form = $('retForm');
+      try {
+        await L.recordInvestmentReturn({
+          date: formVal(form, 'date'),
+          amount: formVal(form, 'amount'),
+          bankAccountId: bank.id,
+          memo: formVal(form, 'memo'),
+        });
+        status('Investment return posted to Other income.');
+        await reload();
+      } catch (e) {
+        status(e.message || 'Could not record return.');
+      }
+    });
+  }
   $('viewRoot').querySelectorAll('[data-edit-bank-jnl]').forEach((btn) => {
     btn.addEventListener('click', () => {
       pendingJournalId = btn.getAttribute('data-edit-bank-jnl');
@@ -1275,9 +1362,13 @@ function reportHtml(kind, range) {
     let assets = 0;
     let liab = 0;
     rows.push({ head: true, label: 'Assets' });
+    const seenGl = {};
     L.listBankAccounts().forEach((b) => {
+      if (seenGl[b.glCode]) return;
+      seenGl[b.glCode] = true;
       const n = L.money((all[b.glCode] && all[b.glCode].net) || 0);
-      rows.push({ label: b.name, amount: n });
+      const tag = L.isInvestmentAccount(b) ? ' (invested)' : '';
+      rows.push({ label: b.name + tag, amount: n });
       assets += n;
     });
     ['1100'].forEach((c) => {
@@ -1313,7 +1404,7 @@ function reportHtml(kind, range) {
   if (kind === 'cash') {
     const rows = [];
     L.listBankAccounts().forEach((b) => {
-      rows.push({ head: true, label: b.name });
+      rows.push({ head: true, label: b.name + (L.isInvestmentAccount(b) ? ' (invested)' : '') });
       let inAmt = 0;
       let outAmt = 0;
       cache.journals.forEach((j) => {
@@ -1433,6 +1524,8 @@ function renderSettings() {
         '<tr><td>' +
         esc(b.name) +
         '</td><td>' +
+        esc(L.isInvestmentAccount(b) ? 'Investment' : 'Operating') +
+        '</td><td>' +
         esc(b.accountName || '') +
         '</td><td>' +
         esc(b.accountNo) +
@@ -1453,10 +1546,14 @@ function renderSettings() {
     '"></div></form>' +
     '<div class="btn-row"><button class="btn" id="lockBtn">Lock month</button><button class="btn ghost" id="unlockBtn">Unlock</button></div>' +
     '<p class="muted">Locked months reject new journals (including invoice and payslip posts).</p></div>' +
-    '<div class="panel"><h2>Bank accounts</h2>' +
+    '<div class="panel"><h2>Bank &amp; investment accounts</h2>' +
     '<form id="bankForm" class="form-grid">' +
     '<input type="hidden" name="id" value="">' +
-    '<div><label>Bank name</label><input name="name" placeholder="Bank Islam"></div>' +
+    '<div><label>Name</label><input name="name" placeholder="Bank Islam or Investment account"></div>' +
+    '<div><label>Kind</label><select name="kind">' +
+    '<option value="operating">Operating bank</option>' +
+    '<option value="investment">Investment (park funds)</option>' +
+    '</select></div>' +
     '<div><label>Account name</label><input name="accountName" placeholder="Saiful Iqbal"></div>' +
     '<div><label>Account no.</label><input name="accountNo"></div>' +
     '<div><label>GL code</label><select name="glCode">' +
@@ -1464,11 +1561,11 @@ function renderSettings() {
     '</select></div>' +
     '<div><label>Opening balance (RM)</label><input type="number" step="0.01" name="openingBalance" value="0"></div>' +
     '<div><label>Opening date</label><input type="date" name="openingDate"></div>' +
-    '</form><div class="btn-row"><button class="btn" id="bankSaveBtn">Save bank account</button>' +
+    '</form><div class="btn-row"><button class="btn" id="bankSaveBtn">Save account</button>' +
     '<button class="btn ghost" id="bankNewBtn">New</button></div>' +
-    '<p class="muted">Give each bank its own GL asset code (e.g. 1000, 1001) so registers stay separate. Click Edit on a row to change it.</p>' +
+    '<p class="muted">Operating cash uses 1000. Parked money uses 1010 so the dashboard and balance sheet stay separate. Fill in the investment account number when you have it.</p>' +
     (bankRows
-      ? '<table class="data-table"><thead><tr><th>Bank</th><th>Account name</th><th>Account no.</th><th>GL</th><th class="num">Opening</th><th></th></tr></thead><tbody>' +
+      ? '<table class="data-table"><thead><tr><th>Name</th><th>Kind</th><th>Account name</th><th>Account no.</th><th>GL</th><th class="num">Opening</th><th></th></tr></thead><tbody>' +
         bankRows +
         '</tbody></table>'
       : '') +
@@ -1522,13 +1619,14 @@ function renderSettings() {
       await L.upsertBankAccount({
         id: formVal(form, 'id') || undefined,
         name: formVal(form, 'name'),
+        kind: formVal(form, 'kind'),
         accountName: formVal(form, 'accountName'),
         accountNo: formVal(form, 'accountNo'),
         glCode: formVal(form, 'glCode'),
         openingBalance: formVal(form, 'openingBalance'),
         openingDate: formVal(form, 'openingDate'),
       });
-      status('Bank account saved.');
+      status('Account saved.');
       await reload();
     } catch (e) {
       status(e.message);
@@ -1538,11 +1636,23 @@ function renderSettings() {
     const form = $('bankForm');
     setForm(form, 'id', '');
     setForm(form, 'name', '');
+    setForm(form, 'kind', 'operating');
     setForm(form, 'accountName', '');
     setForm(form, 'accountNo', '');
+    setForm(form, 'glCode', '1000');
     setForm(form, 'openingBalance', 0);
     setForm(form, 'openingDate', '');
   });
+  const kindEl = $('bankForm').querySelector('[name="kind"]');
+  if (kindEl) {
+    kindEl.addEventListener('change', () => {
+      const form = $('bankForm');
+      if (formVal(form, 'kind') === 'investment' && !formVal(form, 'id')) {
+        setForm(form, 'glCode', '1010');
+        if (!formVal(form, 'name')) setForm(form, 'name', 'Investment account');
+      }
+    });
+  }
   $('viewRoot').querySelectorAll('[data-edit-bank]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const b = L.listBankAccounts().find((x) => x.id === btn.getAttribute('data-edit-bank'));
@@ -1550,6 +1660,7 @@ function renderSettings() {
       const form = $('bankForm');
       setForm(form, 'id', b.id);
       setForm(form, 'name', b.name);
+      setForm(form, 'kind', L.isInvestmentAccount(b) ? 'investment' : 'operating');
       setForm(form, 'accountName', b.accountName);
       setForm(form, 'accountNo', b.accountNo);
       setForm(form, 'glCode', b.glCode);
