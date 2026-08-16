@@ -3,6 +3,7 @@ Thumbs.db
 *.log
 .env
 .env.*
+!.env.example
 .idea/
 .vscode/
 *.swp

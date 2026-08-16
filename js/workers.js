@@ -202,7 +202,7 @@ window.TCVWorkers = (function () {
       box.className = 'client-summary is-empty';
       box.innerHTML =
         (bound && bound.emptyHint) ||
-        'No worker selected. <a href="../../tools/workforce/">Register a worker</a> first.';
+        'No worker selected. <a href="../workforce/">Register a worker</a> first.';
       return;
     }
     const bits = [

@@ -3,40 +3,428 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <title>ChendAwan Tools</title>
-  <link rel="stylesheet" href="css/shared.css?v=20260816r2">
-  <link rel="stylesheet" href="css/hub.css?v=20260816r2">
+  <title>TEAM CHENDAWAN VENTURES — Digital solutions that move businesses forward</title>
+  <meta name="description" content="TEAM CHENDAWAN VENTURES is a Kluang-based technology team building custom systems, websites, IT consulting, and cybersecurity for SMEs across Malaysia.">
+  <link rel="canonical" href="https://harlequincs.github.io/CHENDAWAN_SMART_SYSTEM/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="TEAM CHENDAWAN VENTURES">
+  <meta property="og:description" content="We build digital solutions that move businesses forward — custom systems, websites, consulting, and cybersecurity for Malaysian SMEs.">
+  <meta property="og:url" content="https://harlequincs.github.io/CHENDAWAN_SMART_SYSTEM/">
+  <meta property="og:image" content="https://harlequincs.github.io/CHENDAWAN_SMART_SYSTEM/assets/logo.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="TEAM CHENDAWAN VENTURES">
+  <meta name="twitter:description" content="A modern technology team that builds practical digital solutions around real business needs.">
+  <link rel="icon" href="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "TEAM CHENDAWAN VENTURES",
+    "legalName": "TEAM CHENDAWAN VENTURES",
+    "url": "https://harlequincs.github.io/CHENDAWAN_SMART_SYSTEM/",
+    "email": "iqbal.chendawan@gmail.com",
+    "telephone": "+60147207787",
+    "image": "https://harlequincs.github.io/CHENDAWAN_SMART_SYSTEM/assets/logo.png",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "No. 22, Jalan Sutera 4/5, Taman Puteri",
+      "addressLocality": "Kluang",
+      "addressRegion": "Johor",
+      "postalCode": "86000",
+      "addressCountry": "MY"
+    },
+    "areaServed": "MY",
+    "founder": {
+      "@type": "Person",
+      "name": "Muhammad Saiful Iqbal Bin Abdul Rani"
+    }
+  }
+  </script>
 </head>
-<body>
-  <div class="hub">
-    <div class="hub-inner">
-      <header class="hub-brand">
-        <img src="assets/logo.png?v=20260816r2" alt="ChendAwan">
-        <h1>ChendAwan Tools</h1>
-        <p>Internal tools for Team ChendAwan — invoices, documents, and more in one place.</p>
-      </header>
-
-      <div class="hub-session">
-        <span id="sessionEmail"></span>
-        <a class="session-link" href="login.html" id="signInLink">Sign in</a>
-        <button type="button" id="signOutBtn" hidden>Sign out</button>
+<body class="site">
+  <div class="site-wrap">
+    <header class="site-header">
+      <div class="site-container">
+        <a class="site-logo" href="index.html">
+          <img src="assets/logo.png" alt="">
+          <span>TEAM CHENDAWAN VENTURES</span>
+        </a>
+        <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="siteNav" aria-label="Open menu">
+          <span></span>
+        </button>
+        <nav class="site-nav" id="siteNav">
+          <a href="#services">Services</a>
+          <a href="#work">Work</a>
+          <a href="#process">Process</a>
+          <a href="#contact">Contact</a>
+          <a class="btn btn-primary btn-header" href="#contact">Let’s talk</a>
+        </nav>
       </div>
+    </header>
 
-      <div id="hubSections"></div>
+    <main>
+      <section class="hero">
+        <div class="site-container">
+          <div>
+            <p class="eyebrow">Digital solutions · IT consulting · Kluang, Johor</p>
+            <h1>We build digital solutions that move businesses forward.</h1>
+            <p class="lede">From custom systems and websites to digital transformation and scalable architecture, we turn ideas into technology that works.</p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#contact">Let’s Build Something →</a>
+              <a class="btn btn-ghost" href="#services">Explore Our Services</a>
+            </div>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="browser-bar"><i></i><i></i><i></i></div>
+            <div class="hero-grid">
+              <div class="hero-card tall">
+                <div class="skel w60"></div>
+                <div class="skel w80"></div>
+                <div class="skel lg"></div>
+              </div>
+              <div class="hero-card">
+                <div class="skel w40"></div>
+                <div class="skel w80"></div>
+              </div>
+              <div class="hero-card">
+                <div class="skel w80"></div>
+                <div class="skel w60"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <p class="hub-foot">Team ChendAwan · One-stop centre</p>
-    </div>
+      <section class="section" id="about">
+        <div class="site-container intro-grid" data-reveal>
+          <div class="intro-copy">
+            <p class="eyebrow">Introduction</p>
+            <h2>A young technical team building around real business needs.</h2>
+            <p>TEAM CHENDAWAN VENTURES is a sole proprietorship in Kluang, Johor. We help SMEs launch, improve, and scale — custom web systems, IT consulting, and the integrations that sit behind day-to-day operations.</p>
+            <p>We stay close to the work: practical architecture, clean interfaces, and systems you can actually run. No catalogue of unused products — we design around what you need to ship.</p>
+          </div>
+          <div class="stat-row">
+            <div><strong>5</strong><span>Service lines we sell</span></div>
+            <div><strong>SMEs</strong><span>Primary clients we build for</span></div>
+            <div><strong>Johor</strong><span>Based in Kluang, serving Malaysia</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="services">
+        <div class="site-container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">What we do</p>
+            <h2>Capabilities we put into production.</h2>
+            <p>Five lines that match how we actually work — from portals and integrations to cybersecurity assessments.</p>
+          </div>
+          <div class="card-grid" data-reveal>
+            <article class="card">
+              <div class="num">01</div>
+              <h3>Digital solutions</h3>
+              <p>Custom web applications, business systems, digital platforms, and e-commerce.</p>
+            </article>
+            <article class="card">
+              <div class="num">02</div>
+              <h3>IT consulting</h3>
+              <p>Technology strategy, system architecture, digital transformation, and technical direction.</p>
+            </article>
+            <article class="card">
+              <div class="num">03</div>
+              <h3>Web and software</h3>
+              <p>Web development, custom software, API integration, and workflow automation.</p>
+            </article>
+            <article class="card">
+              <div class="num">04</div>
+              <h3>UI / UX</h3>
+              <p>Interface design, website redesign, and making existing tools easier to use.</p>
+            </article>
+            <article class="card">
+              <div class="num">05</div>
+              <h3>Cybersecurity</h3>
+              <p>Vulnerability assessment, web application testing, and security consulting (CYB-200).</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="solutions">
+        <div class="site-container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Solutions</p>
+            <h2>Problems we take on.</h2>
+            <p>Less about a catalogue of services — more about the job you need done.</p>
+          </div>
+          <div class="solutions" data-reveal>
+            <article class="solution">
+              <h3>Launch</h3>
+              <p class="problem">You have an idea but need the technology to bring it to life.</p>
+              <p class="solve"><strong>Solution.</strong> We design and build the digital platform around your requirements.</p>
+            </article>
+            <article class="solution">
+              <h3>Redesign</h3>
+              <p class="problem">Your existing website or system feels outdated.</p>
+              <p class="solve"><strong>Solution.</strong> We modernize the experience without losing sight of the underlying business.</p>
+            </article>
+            <article class="solution">
+              <h3>Scale</h3>
+              <p class="problem">Your system is becoming difficult to maintain or grow.</p>
+              <p class="solve"><strong>Solution.</strong> We improve architecture, infrastructure, and the technical foundations.</p>
+            </article>
+            <article class="solution">
+              <h3>Automate</h3>
+              <p class="problem">Your team spends too much time on repetitive work.</p>
+              <p class="solve"><strong>Solution.</strong> We integrate systems and automate workflows to cut manual effort.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="work">
+        <div class="site-container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Selected work</p>
+            <h2>A few things we have built.</h2>
+            <p>Named products where we can share them. Client work stays confidential.</p>
+          </div>
+          <div class="work-grid" data-reveal>
+            <article class="work-card">
+              <div class="work-frame">
+                <div class="frame-ui">
+                  <div class="row"><span class="pill accent"></span><span class="pill"></span></div>
+                  <div class="map-block"></div>
+                </div>
+              </div>
+              <div class="work-body">
+                <span class="tag">Platform</span>
+                <h3>RoadSense</h3>
+                <p>Smart road hazard reporting platform — field reports, maps, and follow-up in one place.</p>
+                <div class="tech"><span>Java</span><span>Next.js</span><span>Firebase</span><span>Google Maps</span></div>
+              </div>
+            </article>
+            <article class="work-card">
+              <div class="work-frame">
+                <div class="frame-ui">
+                  <div class="row"><span class="pill"></span><span class="pill accent"></span><span class="pill"></span></div>
+                  <div class="bars"><span></span><span></span><span></span><span></span></div>
+                </div>
+              </div>
+              <div class="work-body">
+                <span class="tag">Security</span>
+                <h3>VERITAS</h3>
+                <p>Automated vulnerability assessment and security intelligence for application estates.</p>
+                <div class="tech"><span>Python</span><span>FastAPI</span><span>Next.js</span><span>PostgreSQL</span><span>Redis</span></div>
+              </div>
+            </article>
+            <article class="work-card">
+              <div class="work-frame is-conf">
+                <div class="frame-ui">
+                  <div class="row"><span class="pill"></span><span class="pill"></span></div>
+                  <div class="skel lg"></div>
+                </div>
+              </div>
+              <div class="work-body">
+                <span class="tag">Confidential</span>
+                <h3>Confidential client project</h3>
+                <p>SME operations — replacing scattered spreadsheets with a custom business portal and document workflow.</p>
+                <div class="tech"><span>Web application</span><span>Firebase</span><span>PHP</span></div>
+              </div>
+            </article>
+            <article class="work-card">
+              <div class="work-frame is-conf">
+                <div class="frame-ui">
+                  <div class="row"><span class="pill accent"></span></div>
+                  <div class="skel w80"></div>
+                  <div class="skel w60"></div>
+                </div>
+              </div>
+              <div class="work-body">
+                <span class="tag">Confidential</span>
+                <h3>Confidential client project</h3>
+                <p>Regional business — application security review and vulnerability assessment before a public launch.</p>
+                <div class="tech"><span>Cybersecurity</span><span>Web application testing</span></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="why">
+        <div class="site-container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Why us</p>
+            <h2>How we actually work with you.</h2>
+          </div>
+          <div class="why-grid" data-reveal>
+            <article class="card">
+              <h3>Built around your needs</h3>
+              <p>No unnecessary templates. We build solutions around your actual requirements.</p>
+            </article>
+            <article class="card">
+              <h3>Modern by default</h3>
+              <p>Modern technologies, interfaces, and architecture designed for today’s digital environment.</p>
+            </article>
+            <article class="card">
+              <h3>Built to scale</h3>
+              <p>We think beyond launch and build systems that can evolve with your business.</p>
+            </article>
+            <article class="card">
+              <h3>Young and technical</h3>
+              <p>A new generation of technology team solving real business problems through software.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="process">
+        <div class="site-container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Process</p>
+            <h2>A clear path from first call to something you can run.</h2>
+          </div>
+          <div class="process" data-reveal>
+            <article class="process-step">
+              <strong>01</strong>
+              <h3>Discover</h3>
+              <p>Understand the business, requirements, and problems.</p>
+            </article>
+            <article class="process-step">
+              <strong>02</strong>
+              <h3>Plan</h3>
+              <p>Define the solution, architecture, and roadmap.</p>
+            </article>
+            <article class="process-step">
+              <strong>03</strong>
+              <h3>Build</h3>
+              <p>Design and develop the solution.</p>
+            </article>
+            <article class="process-step">
+              <strong>04</strong>
+              <h3>Launch</h3>
+              <p>Test, deploy, and prepare the system for production.</p>
+            </article>
+            <article class="process-step">
+              <strong>05</strong>
+              <h3>Scale</h3>
+              <p>Maintain, improve, and evolve as the business grows.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="technology">
+        <div class="site-container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Technology</p>
+            <h2>Tools we actually use.</h2>
+          </div>
+          <div class="tech-cloud" data-reveal>
+            <span>Next.js</span>
+            <span>React</span>
+            <span>Node.js</span>
+            <span>Python</span>
+            <span>PHP</span>
+            <span>Java</span>
+            <span>PostgreSQL</span>
+            <span>MySQL</span>
+            <span>Firebase</span>
+            <span>Docker</span>
+            <span>Linux</span>
+            <span>CI/CD</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="contact">
+        <div class="site-container">
+          <div class="cta-band" data-reveal>
+            <div>
+              <p class="eyebrow" style="color:#9ec9dc">Start a project</p>
+              <h2>Have an idea? Let’s turn it into something real.</h2>
+              <p class="lede">Tell us what you’re trying to build, improve, or solve. We’ll figure out the technology together.</p>
+            </div>
+            <form class="site-form" id="contactForm" novalidate>
+              <div class="hp" aria-hidden="true">
+                <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+              </div>
+              <div class="row">
+                <div>
+                  <label for="name">Name</label>
+                  <input id="name" name="name" type="text" autocomplete="name" required>
+                </div>
+                <div>
+                  <label for="email">Email</label>
+                  <input id="email" name="email" type="email" autocomplete="email" required>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <label for="phone">Phone</label>
+                  <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+                </div>
+                <div>
+                  <label for="company">Company <span style="font-weight:500;opacity:.7">(optional)</span></label>
+                  <input id="company" name="company" type="text" autocomplete="organization">
+                </div>
+              </div>
+              <div>
+                <label for="message">Message</label>
+                <textarea id="message" name="message" required placeholder="What are you trying to build or fix?"></textarea>
+              </div>
+              <button class="btn btn-primary" type="submit">Start a Project →</button>
+              <p class="form-status" data-form-status></p>
+              <div class="form-fallback" data-form-fallback>
+                <a class="btn btn-ghost" data-fallback-mail href="mailto:iqbal.chendawan@gmail.com">Email us</a>
+                <a class="btn btn-ghost" data-fallback-wa href="https://wa.me/60147207787">WhatsApp</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-container">
+        <div class="footer-grid">
+          <div>
+            <h2>Company</h2>
+            <ul>
+              <li><a href="#about">About</a></li>
+              <li><a href="#services">Services</a></li>
+              <li><a href="#work">Work</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2>Services</h2>
+            <ul>
+              <li>Digital solutions</li>
+              <li>IT consulting</li>
+              <li>Web and software</li>
+              <li>UI / UX</li>
+              <li>Cybersecurity</li>
+            </ul>
+          </div>
+          <div>
+            <h2>Contact</h2>
+            <p><a href="mailto:iqbal.chendawan@gmail.com">iqbal.chendawan@gmail.com</a><br>
+              <a href="tel:+60147207787">+60 14-720 7787</a><br>
+              <a href="https://wa.me/60147207787">WhatsApp</a></p>
+            <p>No. 22, Jalan Sutera 4/5,<br>Taman Puteri, 86000 Kluang,<br>Johor, Malaysia</p>
+            <p><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms</a></p>
+          </div>
+        </div>
+        <div class="footer-copy">
+          <span>© 2026 TEAM CHENDAWAN VENTURES. All rights reserved.</span>
+          <a class="staff-mark" href="login.html" aria-label="Staff"><img src="assets/logo.png" alt=""></a>
+        </div>
+      </div>
+    </footer>
   </div>
-
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js?v=20260816r2"></script>
-  <script src="js/firebase.js?v=20260816r2"></script>
-  <script src="js/tools-registry.js?v=20260816r2"></script>
-  <script src="js/hub.js?v=20260816r2"></script>
+  <script src="js/site.js"></script>
 </body>
 </html>

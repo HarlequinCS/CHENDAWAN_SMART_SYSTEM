@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /tools/
+Disallow: /login.html
+
+Sitemap: https://harlequincs.github.io/CHENDAWAN_SMART_SYSTEM/sitemap.xml

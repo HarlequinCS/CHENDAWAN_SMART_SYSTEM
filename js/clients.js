@@ -183,7 +183,7 @@ window.TCVClients = (function () {
       box.className = 'client-summary is-empty';
       box.innerHTML =
         (bound && bound.emptyHint) ||
-        'No client selected. <a href="../../tools/clients/">Register a client</a> first.';
+        'No client selected. <a href="../clients/">Register a client</a> first.';
       return;
     }
     const tag = client.type === 'individual' ? 'Individual' : 'Business';

@@ -7,16 +7,27 @@ window.TCVFirebase = (function () {
   let auth;
   let db;
 
-  function loginHref() {
+  function locationKind() {
     const path = (window.location.pathname || '').replace(/\\/g, '/');
-    if (path.indexOf('/tools/') !== -1) return '../../login.html';
+    const segs = path.split('/').filter(Boolean);
+    const i = segs.indexOf('tools');
+    if (i === -1) return 'root';
+    const rest = segs.slice(i + 1).filter((s) => s !== 'index.html');
+    return rest.length ? 'tool' : 'hub';
+  }
+
+  function loginHref() {
+    const kind = locationKind();
+    if (kind === 'tool') return '../../login.html';
+    if (kind === 'hub') return '../login.html';
     return 'login.html';
   }
 
   function homeHref() {
-    const path = (window.location.pathname || '').replace(/\\/g, '/');
-    if (path.indexOf('/tools/') !== -1) return '../../';
-    return 'index.html';
+    const kind = locationKind();
+    if (kind === 'tool') return '../';
+    if (kind === 'hub') return './';
+    return 'tools/';
   }
 
   function init() {

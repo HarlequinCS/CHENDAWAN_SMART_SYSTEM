@@ -725,7 +725,7 @@ function renderPay() {
     .join('');
   $('viewRoot').innerHTML =
     '<div class="panel"><h2>Pay a contractor</h2>' +
-    '<p class="muted">Contractors and freelancers only. Employees with EPF/SOCSO must use <a href="../../tools/payslip/">Payslip / Payment Advice</a>. Register people first in <a href="../../tools/workforce/">Workforce</a>.</p>' +
+    '<p class="muted">Contractors and freelancers only. Employees with EPF/SOCSO must use <a href="../payslip/">Payslip / Payment Advice</a>. Register people first in <a href="../workforce/">Workforce</a>.</p>' +
     '<form id="payForm" class="form-grid">' +
     '<div><label>Worker</label><select name="workerId">' +
     workerOptions('', ['contractor', 'freelancer']) +

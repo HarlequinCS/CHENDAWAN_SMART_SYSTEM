@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (numbering) numbering.refresh();
             else renderPreview();
           },
-          emptyHint: 'No worker selected. <a href="../../tools/workforce/">Register a worker</a> first.',
+          emptyHint: 'No worker selected. <a href="../workforce/">Register a worker</a> first.',
         });
       }
       D.bindDraftActions({ storageKey: STORAGE_KEY, collectState, applyState, defaultState, issueGate: issueGate });

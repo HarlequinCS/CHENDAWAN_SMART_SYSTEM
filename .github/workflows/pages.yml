@@ -38,6 +38,8 @@ jobs:
             --exclude '.pdf-preview' \
             --exclude 'ChendAwan.md' \
             --exclude '*.pdf' \
+            --exclude '.env' \
+            --exclude '.env.*' \
             ./ dist/
 
       - name: Stamp CSS, JS, and images with this commit

@@ -8,7 +8,7 @@ window.TCVLegal.boot({
   relatedId: 'relatedNo',
   relatedTypes: ['QUO', 'MSA'],
   workerEmptyHint:
-    'No contractor selected. <a href="../../tools/workforce/">Register the contractor</a> first.',
+    'No contractor selected. <a href="../workforce/">Register the contractor</a> first.',
   workerFilterFn: function (w) {
     return w.type !== 'employee';
   },
