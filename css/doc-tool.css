@@ -771,38 +771,49 @@ ul.notes-list {
 
 @media print {
   @page {
-    margin: 12mm;
+    size: A4 portrait;
+    margin: 0;
   }
 
+  html,
   body {
+    margin: 0;
+    padding: 0;
+    height: auto !important;
+    overflow: visible !important;
     background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .app {
-    display: block;
-    height: auto;
-    overflow: visible;
+    display: block !important;
+    grid-template-columns: none !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   .form-panel,
+  .sticky-actions,
   .print-btn,
   .back-link {
     display: none !important;
   }
 
   .preview-panel {
-    padding: 0;
-    height: auto;
-    max-height: none;
-    overflow: visible;
+    padding: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff;
   }
 
   .doc-sheet {
     box-shadow: none;
-    width: auto;
-    min-height: auto;
+    width: 210mm;
+    min-height: 297mm;
     margin: 0;
     background: #fff;
-    padding: 12mm;
+    padding: 18mm 18mm 22mm;
   }
 }

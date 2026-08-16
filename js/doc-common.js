@@ -54,19 +54,26 @@ window.TCVDoc = (function () {
     return state;
   }
 
-  function downloadPdf(sheetId, filename, btnId) {
-    const btn = document.getElementById(btnId || 'downloadBtn');
-    const el = document.getElementById(sheetId);
-    if (!el || typeof html2pdf === 'undefined') {
-      setStatus('PDF library is not available.');
-      return;
-    }
-    const original = btn ? btn.textContent : '';
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = 'Preparing PDF...';
-    }
-    const panel = el.closest('.preview-panel');
+  function pdfOptions(el, filename) {
+    return {
+      margin: 0,
+      filename: filename || 'document.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
+      },
+      pagebreak: { mode: ['css', 'legacy'] },
+      jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+    };
+  }
+
+  function withSheetUnlocked(el, fn) {
+    const panel = el ? el.closest('.preview-panel') : null;
     const prevOverflow = panel ? panel.style.overflow : '';
     const prevMax = panel ? panel.style.maxHeight : '';
     const prevHeight = panel ? panel.style.height : '';
@@ -81,37 +88,114 @@ window.TCVDoc = (function () {
         panel.style.maxHeight = prevMax;
         panel.style.height = prevHeight;
       }
+    };
+    return Promise.resolve()
+      .then(fn)
+      .then(
+        (value) => {
+          restore();
+          return value;
+        },
+        (err) => {
+          restore();
+          throw err;
+        }
+      );
+  }
+
+  function makePdfBlob(el, filename) {
+    return html2pdf()
+      .set(pdfOptions(el, filename))
+      .from(el)
+      .toPdf()
+      .get('pdf')
+      .then((pdf) => pdf.output('blob'));
+  }
+
+  function printBlob(blob) {
+    const url = URL.createObjectURL(blob);
+    const frame = document.createElement('iframe');
+    frame.setAttribute('title', 'Print document');
+    frame.src = url;
+    frame.style.cssText =
+      'position:fixed;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;z-index:-1;';
+    document.body.appendChild(frame);
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      if (frame.parentNode) frame.parentNode.removeChild(frame);
+      URL.revokeObjectURL(url);
+    };
+    const runPrint = () => {
+      try {
+        const win = frame.contentWindow;
+        if (!win) throw new Error('no print window');
+        win.addEventListener('afterprint', cleanup);
+        win.focus();
+        win.print();
+        setTimeout(cleanup, 120000);
+      } catch (e) {
+        window.open(url, '_blank');
+        setTimeout(cleanup, 120000);
+      }
+    };
+    frame.addEventListener('load', () => setTimeout(runPrint, 400));
+  }
+
+  function downloadPdf(sheetId, filename, btnId) {
+    const btn = document.getElementById(btnId || 'downloadBtn');
+    const el = document.getElementById(sheetId);
+    if (!el || typeof html2pdf === 'undefined') {
+      setStatus('PDF library is not available.');
+      return;
+    }
+    const original = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Preparing PDF...';
+    }
+    const finish = (ok) => {
       if (btn) {
         btn.disabled = false;
         btn.textContent = original || 'Download PDF';
       }
+      setStatus(ok ? 'PDF downloaded.' : 'Something went wrong generating the PDF. Try again.');
     };
-    const opt = {
-      margin: 0,
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: el.scrollWidth,
-        windowHeight: el.scrollHeight,
-      },
-      pagebreak: { mode: ['css', 'legacy'] },
-      jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+    withSheetUnlocked(el, () =>
+      html2pdf().set(pdfOptions(el, filename)).from(el).save()
+    )
+      .then(() => finish(true))
+      .catch(() => finish(false));
+  }
+
+  function printPdf(sheetId, btnId) {
+    const el =
+      (sheetId && document.getElementById(sheetId)) || document.querySelector('.doc-sheet');
+    const btn = document.getElementById(btnId || 'printBtn');
+    if (!el || typeof html2pdf === 'undefined') {
+      window.print();
+      return;
+    }
+    const original = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Preparing print...';
+    }
+    const finish = () => {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = original || 'Print preview';
+      }
     };
-    html2pdf()
-      .set(opt)
-      .from(el)
-      .save()
-      .then(() => {
-        restore();
-        setStatus('PDF downloaded.');
+    withSheetUnlocked(el, () => makePdfBlob(el, 'print.pdf'))
+      .then((blob) => {
+        finish();
+        printBlob(blob);
       })
       .catch(() => {
-        restore();
-        setStatus('Something went wrong generating the PDF. Try again.');
+        finish();
+        window.print();
       });
   }
 
@@ -406,7 +490,10 @@ window.TCVDoc = (function () {
 
     const printBtn = document.getElementById('printBtn');
     if (printBtn) {
-      printBtn.addEventListener('click', () => window.print());
+      printBtn.addEventListener('click', () => {
+        const sheet = document.querySelector('.doc-sheet');
+        printPdf(sheet && sheet.id, 'printBtn');
+      });
     }
   }
 
@@ -485,6 +572,7 @@ window.TCVDoc = (function () {
     saveDraft,
     loadDraft,
     downloadPdf,
+    printPdf,
     safeFilename,
     companyDefaults,
     bindLivePreview,
