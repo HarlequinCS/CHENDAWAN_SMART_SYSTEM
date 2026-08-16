@@ -239,6 +239,8 @@ a {
   line-height: 1.05;
   letter-spacing: -0.045em;
   font-weight: 700;
+  color: var(--ink);
+}
 
 .lede {
   margin: 0;
