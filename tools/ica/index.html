@@ -125,17 +125,16 @@
         </div>
       </div>
       <hr class="rule">
-      <div class="doc-title" style="text-align:left;margin-bottom:10px;">
-        <div class="big" style="font-size:22px;">INDEPENDENT CONTRACTOR AGREEMENT</div>
-        <div class="small">PROJECT-BASED / CONTRACT FOR SERVICE</div>
-      </div>
-      <div class="doc-ref">
-        <span class="lab">Document No. </span><strong data-bind="docNo" data-ph="—">—</strong>
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        <span class="lab">Effective Date </span><strong data-bind="effDate" data-format="date" data-ph="—">—</strong>
+      <div class="doc-subtitle">Independent Contractor Agreement</div>
+      <p class="doc-subtitle-sub">Project-based / contract for service</p>
+      <div class="doc-ref-card">
+        <div><span class="lab">Document no.</span><span class="val" data-bind="docNo" data-ph="—">—</span></div>
+        <div><span class="lab">Effective date</span><span class="val" data-bind="effDate" data-format="date" data-ph="—">—</span></div>
+        <div><span class="lab">Related document</span><span class="val" data-bind="relatedNo" data-ph="—">—</span></div>
       </div>
       <p class="legal-intro">This Independent Contractor Agreement (“Agreement”) is made on <strong data-bind="effDate" data-format="date" data-ph="[Date]">[Date]</strong> (“Effective Date”).</p>
 
+      <div class="party-grid">
       <div class="party-block">
         <div class="eyebrow">COMPANY</div>
         <div class="name" id="pv-partyAName">TEAM CHENDAWAN VENTURES</div>
@@ -149,6 +148,7 @@
         <div class="line" data-show-type="business">Registration No. <span data-bind="clientReg" data-ph="[SSM No.]">[SSM No.]</span></div>
         <div class="line" data-show-type="individual">Of <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
         <div class="line" data-show-type="business">Having its principal place of business at <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
+      </div>
       </div>
       <p class="legal-intro">The Company and the Contractor are hereinafter collectively referred to as the “Parties” and individually as a “Party”.</p>
 

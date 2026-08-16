@@ -169,23 +169,20 @@ function renderStatementSheet(client, stmt) {
     '<div class="small">' +
     esc(company.shortName || '') +
     '</div></div></div><hr class="rule">' +
-    '<div class="stmt-client">' +
+    '<div class="meta-grid"><div class="bill-to"><div class="eyebrow">Client</div><div class="name">' +
     esc(client.name) +
-    '</div>' +
-    '<p class="stmt-meta">' +
-    esc(client.reg ? (client.type === 'individual' ? 'NRIC ' : 'Reg. ') + client.reg : '') +
-    (client.address ? '<br>' + esc(client.address) : '') +
-    '</p>' +
-    '<p class="stmt-meta">Period: ' +
-    esc(D.formatDate(stmt.from)) +
-    ' — ' +
-    esc(D.formatDate(stmt.to)) +
-    '<br>Phone: ' +
+    '</div><div class="line">' +
+    esc(client.reg ? (client.type === 'individual' ? 'NRIC No. ' : 'Registration No. ') + client.reg : '') +
+    '</div><div class="line">' +
+    esc(client.address || '') +
+    '</div></div><div class="meta-right"><div><span class="lab">Period</span><span class="val">' +
+    esc(D.formatDate(stmt.from) + ' — ' + D.formatDate(stmt.to)) +
+    '</span></div><div><span class="lab">Phone</span><span class="val">' +
     esc(company.phone || '+60 14-720 7787') +
-    '  ·  ' +
+    '</span></div><div><span class="lab">Email</span><span class="val">' +
     esc(company.email || '') +
-    '</p>' +
-    '<table class="stmt-table"><thead><tr><th>Date</th><th>Number</th><th>Type</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead><tbody>' +
+    '</span></div></div></div>' +
+    '<table class="items stmt-table"><thead><tr><th>Date</th><th>Number</th><th>Type</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead><tbody>' +
     '<tr class="is-open"><td colspan="5">Opening balance</td><td class="num">' +
     rm(stmt.opening) +
     '</td></tr>' +
@@ -196,28 +193,44 @@ function renderStatementSheet(client, stmt) {
     '<p class="stmt-meta" style="margin-top:18px;">Positive balance is amount still owed to TEAM CHENDAWAN VENTURES.</p>';
 }
 
-async function downloadStatement() {
+async function prepareStatement() {
   const id = val('clientRecordId');
   const client = C.get(id);
   if (!client) {
     D.setStatus('Select a client first.');
-    return;
+    return null;
   }
   if (!window.TCVLedger || !window.TCVLedger.clientStatement) {
     D.setStatus('Ledger is not available.');
-    return;
+    return null;
   }
+  await window.TCVLedger.ensureSeeded();
+  const stmt = await window.TCVLedger.clientStatement(id, val('stmtFrom'), val('stmtTo'));
+  renderStatementSheet(client, stmt);
+  document.getElementById('statementPrint').hidden = false;
+  return { client, stmt };
+}
+
+async function downloadStatement() {
   try {
-    await window.TCVLedger.ensureSeeded();
-    const stmt = await window.TCVLedger.clientStatement(id, val('stmtFrom'), val('stmtTo'));
-    renderStatementSheet(client, stmt);
-    document.getElementById('statementPrint').hidden = false;
-    const slug = (client.name || 'client').replace(/[^a-z0-9\-_]+/gi, '_');
+    const built = await prepareStatement();
+    if (!built) return;
+    const slug = (built.client.name || 'client').replace(/[^a-z0-9\-_]+/gi, '_');
     D.downloadPdf(
       'statement-sheet',
-      'Statement_' + slug + '_' + stmt.from + '_' + stmt.to + '.pdf',
+      'Statement_' + slug + '_' + built.stmt.from + '_' + built.stmt.to + '.pdf',
       'stmtBtn'
     );
+  } catch (e) {
+    D.setStatus(e.message || 'Could not build the statement.');
+  }
+}
+
+async function printStatement() {
+  try {
+    const built = await prepareStatement();
+    if (!built) return;
+    D.printPdf('statement-sheet', 'stmtPrintBtn');
   } catch (e) {
     D.setStatus(e.message || 'Could not build the statement.');
   }
@@ -239,6 +252,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('stmtBtn').addEventListener('click', () => {
     downloadStatement();
+  });
+  document.getElementById('stmtPrintBtn').addEventListener('click', () => {
+    printStatement();
   });
   document.getElementById('saveBtn').addEventListener('click', async () => {
     const data = collectClient();

@@ -121,6 +121,7 @@ window.TCVDoc = (function () {
       'position:fixed;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;z-index:-1;';
     document.body.appendChild(frame);
     let cleaned = false;
+    let started = false;
     const cleanup = () => {
       if (cleaned) return;
       cleaned = true;
@@ -128,6 +129,8 @@ window.TCVDoc = (function () {
       URL.revokeObjectURL(url);
     };
     const runPrint = () => {
+      if (started) return;
+      started = true;
       try {
         const win = frame.contentWindow;
         if (!win) throw new Error('no print window');
@@ -140,7 +143,8 @@ window.TCVDoc = (function () {
         setTimeout(cleanup, 120000);
       }
     };
-    frame.addEventListener('load', () => setTimeout(runPrint, 400));
+    frame.addEventListener('load', () => setTimeout(runPrint, 500));
+    setTimeout(runPrint, 1500);
   }
 
   function downloadPdf(sheetId, filename, btnId) {
@@ -477,25 +481,30 @@ window.TCVDoc = (function () {
       }
     });
 
-    document.getElementById('loadDraftBtn').addEventListener('click', () => {
-      const state = loadDraft(storageKey);
-      if (state) {
-        if (issueGate) issueGate.reset();
-        applyState(state);
-        setStatus('Draft loaded.');
-      } else {
-        setStatus('No saved draft found.');
-      }
-    });
-
-    const printBtn = document.getElementById('printBtn');
-    if (printBtn) {
-      printBtn.addEventListener('click', () => {
-        const sheet = document.querySelector('.doc-sheet');
-        printPdf(sheet && sheet.id, 'printBtn');
+    const loadDraftBtn = document.getElementById('loadDraftBtn');
+    if (loadDraftBtn) {
+      loadDraftBtn.addEventListener('click', () => {
+        const state = loadDraft(storageKey);
+        if (state) {
+          if (issueGate) issueGate.reset();
+          applyState(state);
+          setStatus('Draft loaded.');
+        } else {
+          setStatus('No saved draft found.');
+        }
       });
     }
   }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#printBtn, #repPrintBtn');
+    if (!btn) return;
+    e.preventDefault();
+    const report = document.getElementById('reportPrint');
+    if (report && btn.id === 'repPrintBtn') report.hidden = false;
+    const sheet = document.querySelector('.doc-sheet');
+    printPdf(sheet && sheet.id, btn.id);
+  });
 
   const OFFICIAL_PRINT_TITLE = 'OFFICIAL AND CONFIDENTIAL DOCUMENT';
   let titleBeforePrint = '';

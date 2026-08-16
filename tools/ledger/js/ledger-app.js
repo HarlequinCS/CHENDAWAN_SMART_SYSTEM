@@ -1268,7 +1268,6 @@ function renderReports() {
   });
   $('repPrintBtn').addEventListener('click', () => {
     $('reportPrint').hidden = false;
-    window.print();
   });
   paint();
 }

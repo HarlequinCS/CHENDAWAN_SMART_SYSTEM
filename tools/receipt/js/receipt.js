@@ -33,6 +33,7 @@ function renderPreview() {
   g('pv-clientName').textContent = val('clientName') || '[Select a client]';
   g('pv-clientName').className = val('clientName') ? 'name' : 'name empty-ph';
   g('pv-clientAttn').textContent = val('clientAttn');
+  if (g('pv-clientAddr')) g('pv-clientAddr').textContent = val('clientAddr');
   if (g('pv-clientReg')) {
     const reg = val('clientReg');
     const type = val('clientType');

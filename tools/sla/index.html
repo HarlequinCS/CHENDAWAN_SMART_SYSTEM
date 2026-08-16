@@ -112,16 +112,15 @@
         </div>
       </div>
       <hr class="rule">
-      <div class="doc-title" style="text-align:left;margin-bottom:10px;">
-        <div class="big" style="font-size:22px;">SERVICE LEVEL AGREEMENT</div>
-      </div>
-      <div class="doc-ref">
-        <span class="lab">Document No. </span><strong data-bind="docNo" data-ph="—">—</strong>
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        <span class="lab">Effective Date </span><strong data-bind="effDate" data-format="date" data-ph="—">—</strong>
+      <div class="doc-subtitle">Service Level Agreement</div>
+      <div class="doc-ref-card">
+        <div><span class="lab">Document no.</span><span class="val" data-bind="docNo" data-ph="—">—</span></div>
+        <div><span class="lab">Effective date</span><span class="val" data-bind="effDate" data-format="date" data-ph="—">—</span></div>
+        <div><span class="lab">Related document</span><span class="val" data-bind="relatedNo" data-ph="—">—</span></div>
       </div>
       <p class="legal-intro">This Service Level Agreement (“Agreement” or “SLA”) is made on <strong data-bind="effDate" data-format="date" data-ph="[Date]">[Date]</strong> (“Effective Date”).</p>
 
+      <div class="party-grid">
       <div class="party-block">
         <div class="eyebrow">SERVICE PROVIDER</div>
         <div class="name" id="pv-partyAName">TEAM CHENDAWAN VENTURES</div>
@@ -135,6 +134,7 @@
         <div class="line" data-show-type="individual">NRIC No. <span data-bind="clientReg" data-ph="[NRIC No.]">[NRIC No.]</span></div>
         <div class="line" data-show-type="business">Having its principal place of business at <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
         <div class="line" data-show-type="individual">Of <span data-bind="clientAddr" data-ph="[Address]">[Address]</span>.</div>
+      </div>
       </div>
       <p class="legal-intro">The Service Provider and the Client are collectively referred to as the “Parties” and individually as a “Party”.</p>
 
