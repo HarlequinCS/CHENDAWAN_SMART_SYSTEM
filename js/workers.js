@@ -4,6 +4,8 @@
  */
 window.TCVWorkers = (function () {
   const TYPES = ['employee', 'contractor', 'freelancer'];
+  const EMP_ID_PREFIX = 'TCV-E-';
+  const EMP_ID_RE = /^TCV-E-(\d+)$/i;
   let cache = [];
   let bound = null;
 
@@ -28,6 +30,41 @@ window.TCVWorkers = (function () {
     return t === 'employee';
   }
 
+  function formatEmployeeId(n) {
+    return EMP_ID_PREFIX + String(n).padStart(3, '0');
+  }
+
+  function parsedEmployeeSeq(value) {
+    const m = EMP_ID_RE.exec(String(value || '').trim());
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
+  function nextEmployeeId(exceptId) {
+    let max = 0;
+    cache.forEach((w) => {
+      if (exceptId && w.id === exceptId) return;
+      max = Math.max(max, parsedEmployeeSeq(w.employeeId));
+    });
+    return formatEmployeeId(max + 1);
+  }
+
+  function employeeIdTaken(id, exceptId) {
+    const needle = String(id || '').trim().toUpperCase();
+    if (!needle) return false;
+    return cache.some((w) => {
+      if (exceptId && w.id === exceptId) return false;
+      return String(w.employeeId || '').trim().toUpperCase() === needle;
+    });
+  }
+
+  function assignEmployeeId(data, id) {
+    const type = data.type || 'contractor';
+    let employeeId = String(data.employeeId || '').trim();
+    if (type !== 'employee') return employeeId;
+    if (!employeeId || employeeIdTaken(employeeId, id)) return nextEmployeeId(id);
+    return employeeId;
+  }
+
   function sortRows(rows) {
     const order = { employee: 0, contractor: 1, freelancer: 2 };
     return rows.slice().sort((a, b) => {
@@ -47,7 +84,7 @@ window.TCVWorkers = (function () {
       type: type,
       name: (data.name || '').trim(),
       nric: (data.nric || data.reg || '').trim(),
-      employeeId: (data.employeeId || '').trim(),
+      employeeId: assignEmployeeId(Object.assign({}, data, { type: type }), id),
       position: (data.position || '').trim(),
       address: (data.address || '').trim(),
       phone: (data.phone || '').trim(),
@@ -146,7 +183,7 @@ window.TCVWorkers = (function () {
           '"' +
           (c.id === selectedId ? ' selected' : '') +
           '>' +
-          esc(c.name || 'Untitled') +
+          esc((c.name || 'Untitled') + (c.employeeId ? ' · ' + c.employeeId : '')) +
           '</option>';
       });
       html += '</optgroup>';
@@ -171,6 +208,7 @@ window.TCVWorkers = (function () {
         typeLabel(worker.type) +
         '</span></div>',
     ];
+    if (worker.employeeId) bits.push('<div>Employee ID: ' + esc(worker.employeeId) + '</div>');
     if (worker.nric) bits.push('<div>NRIC: ' + esc(worker.nric) + '</div>');
     if (worker.position) bits.push('<div>' + esc(worker.position) + '</div>');
     if (worker.bankName || worker.bankAcc) {
@@ -225,5 +263,7 @@ window.TCVWorkers = (function () {
     bindPicker,
     syncSelected,
     applyToDocFields,
+    nextEmployeeId,
+    EMP_ID_PREFIX,
   };
 })();

@@ -16,6 +16,19 @@ function currentType() {
   return W.TYPES.indexOf(t) >= 0 ? t : 'employee';
 }
 
+function previewEmployeeId() {
+  const hint = document.getElementById('employeeIdHint');
+  if (currentType() !== 'employee') return;
+  const existing = val('employeeId');
+  if (existing) {
+    if (hint) hint.textContent = 'Assigned automatically. This ID stays with the employee.';
+    return;
+  }
+  const next = W.nextEmployeeId(val('workerRecordId') || undefined);
+  setVal('employeeId', next);
+  if (hint) hint.textContent = 'Will be assigned on save: ' + next;
+}
+
 function applyTypeUi() {
   const t = currentType();
   document.querySelectorAll('.type-toggle [data-type]').forEach((btn) => {
@@ -25,6 +38,8 @@ function applyTypeUi() {
   document.getElementById('empWrap').hidden = !emp;
   document.getElementById('posWrap').hidden = emp;
   document.getElementById('statWrap').hidden = !emp;
+  if (emp) previewEmployeeId();
+  else if (!val('workerRecordId')) setVal('employeeId', '');
 }
 
 function blankForm() {
@@ -69,7 +84,7 @@ function collect() {
     type: type,
     name: val('name'),
     nric: val('nric'),
-    employeeId: val('employeeId'),
+    employeeId: type === 'employee' ? val('employeeId') : val('workerRecordId') ? val('employeeId') : '',
     position: type === 'employee' ? val('position') : val('positionAlt'),
     address: val('address'),
     phone: val('phone'),
@@ -108,7 +123,8 @@ function renderList() {
       '<div class="card-top"><span class="card-name"></span><span class="tag"></span></div><div class="card-meta"></div>';
     btn.querySelector('.card-name').textContent = w.name || 'Untitled';
     btn.querySelector('.tag').textContent = W.typeLabel(w.type);
-    btn.querySelector('.card-meta').textContent = [w.nric, w.position, w.bankName].filter(Boolean).join(' · ') || 'No extra details';
+    btn.querySelector('.card-meta').textContent =
+      [w.employeeId, w.nric, w.position, w.bankName].filter(Boolean).join(' · ') || 'No extra details';
     btn.addEventListener('click', () => loadIntoForm(W.get(w.id)));
     box.appendChild(btn);
   });
@@ -135,7 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const saved = await W.upsert(data);
       loadIntoForm(saved);
-      D.setStatus('Worker saved to Firebase.');
+      D.setStatus(
+        saved.type === 'employee' && saved.employeeId
+          ? 'Worker saved. Employee ID ' + saved.employeeId + '.'
+          : 'Worker saved to Firebase.'
+      );
     } catch (e) {
       D.setStatus(e.message || 'Could not save worker.');
     }
@@ -159,7 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const boot = window.TCVFirebase && window.TCVFirebase.ready ? window.TCVFirebase.ready : Promise.resolve();
   boot
     .then(() => W.refresh())
-    .then(() => {
+    .then(async () => {
+      const missing = W.list().filter((w) => w.type === 'employee' && !String(w.employeeId || '').trim());
+      for (let i = 0; i < missing.length; i++) {
+        await W.upsert(missing[i]);
+      }
       applyTypeUi();
       renderList();
     })
