@@ -120,6 +120,19 @@ window.TCVDoc = (function () {
           sheet.querySelectorAll('.party-grid').forEach((n) => asTable(n, '14px 0', 'top'));
           sheet.querySelectorAll('.sig-grid').forEach((n) => asTable(n, '20px 0', 'top'));
           sheet.querySelectorAll('.proj-line, .meta-right > div').forEach((n) => asTable(n, '0', 'baseline'));
+          sheet.querySelectorAll('.legal-clause ul').forEach((n) => {
+            n.style.listStyleType = 'lower-alpha';
+            n.style.paddingLeft = '32px';
+            n.style.margin = '6px 0 12px';
+          });
+          sheet.querySelectorAll('.notes-list').forEach((n) => {
+            n.style.listStyleType = 'decimal';
+            n.style.paddingLeft = '22px';
+          });
+          sheet.querySelectorAll('.subclause, .defn, .subhead').forEach((n) => {
+            n.style.paddingLeft = '36px';
+            n.style.textIndent = '-36px';
+          });
         },
       },
       pagebreak: { mode: ['css'] },

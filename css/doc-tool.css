@@ -731,7 +731,7 @@ table.items tbody td.qty {
 
 .section-heading {
   color: var(--accent);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -741,8 +741,9 @@ table.items tbody td.qty {
 }
 
 .section-body {
-  font-size: 12.5px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 0 0 4px;
 }
 
 .bank-table {
@@ -779,15 +780,24 @@ table.items tbody td.qty {
   margin-top: 6px;
 }
 
-ul.notes-list {
+ul.notes-list,
+ol.notes-list {
   margin: 4px 0 0;
-  padding-left: 18px;
-  font-size: 12.5px;
-  line-height: 1.7;
+  padding-left: 22px;
+  font-size: 12px;
+  line-height: 1.65;
+  list-style-type: decimal;
 }
 
-ul.notes-list li + li {
-  margin-top: 3px;
+ul.notes-list li,
+ol.notes-list li {
+  margin: 0 0 7px;
+  padding-left: 4px;
+}
+
+ul.notes-list li:last-child,
+ol.notes-list li:last-child {
+  margin-bottom: 0;
 }
 
 .sig-block {

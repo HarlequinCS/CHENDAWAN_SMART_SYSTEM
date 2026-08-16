@@ -1,7 +1,7 @@
 .legal-intro {
-  font-size: 12.5px;
-  line-height: 1.7;
-  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 0 0 16px;
 }
 
 .party-grid {
@@ -25,23 +25,53 @@
 
 .legal-clause {
   margin: 18px 0 0;
-  font-size: 12.5px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 .legal-clause h2 {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--accent);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   padding-bottom: 5px;
   border-bottom: 1px solid var(--border);
 }
 
 .legal-clause p {
-  margin: 0 0 8px;
+  margin: 0 0 9px;
+}
+
+.legal-clause p.subhead,
+.legal-clause p.subclause,
+.legal-clause p.defn {
+  padding-left: 36px;
+  text-indent: -36px;
+}
+
+.legal-clause p.subhead {
+  font-weight: 800;
+  margin: 12px 0 4px;
+  color: var(--accent-dark);
+}
+
+.legal-clause p.recital {
+  margin: 0 0 8px 8px;
+  padding: 0 0 0 12px;
+  border-left: 2px solid rgba(21, 96, 130, 0.28);
+  font-style: italic;
+}
+
+.legal-clause p.legal-field {
+  white-space: pre-wrap;
+  text-indent: 0;
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  background: var(--light-fill);
+  border-left: 3px solid var(--accent);
+  line-height: 1.55;
 }
 
 .legal-clause p[data-bind] {
@@ -50,18 +80,31 @@
 
 .legal-clause ul,
 .legal-clause ol {
-  margin: 4px 0 10px;
-  padding-left: 18px;
+  margin: 6px 0 12px;
+  padding-left: 32px;
+}
+
+.legal-clause ul {
+  list-style-type: lower-alpha;
+}
+
+.legal-clause ol {
+  list-style-type: decimal;
 }
 
 .legal-clause li {
-  margin-bottom: 4px;
+  margin: 0 0 6px;
+  padding-left: 6px;
 }
 
-.legal-clause .subhead {
-  font-weight: 700;
-  margin: 10px 0 4px;
-  color: var(--accent-dark);
+.legal-clause li:last-child {
+  margin-bottom: 2px;
+}
+
+.legal-clause #pv-privacyContact {
+  padding-left: 0;
+  text-indent: 0;
+  line-height: 1.7;
 }
 
 .sig-grid {
@@ -121,8 +164,9 @@
 .severity-table td {
   border: none;
   border-bottom: 1px solid #dde5e9;
-  padding: 8px 10px;
+  padding: 9px 10px;
   vertical-align: top;
+  line-height: 1.45;
 }
 
 .severity-table th {
