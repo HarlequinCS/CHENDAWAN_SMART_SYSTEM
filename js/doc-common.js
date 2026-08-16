@@ -128,6 +128,9 @@ window.TCVDoc = (function () {
       prepContact: c.contactLine || '',
       ssmNo: c.ssmNo || '',
       bankMethod: c.bankMethod || 'Online Banking Transfer / DuitNow',
+      bankName: c.bankName || '',
+      bankAccName: c.bankAccName || '',
+      bankAccNo: c.bankAccNo || '',
     };
   }
 

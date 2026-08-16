@@ -6,6 +6,7 @@ const VIEWS = {
   dashboard: { title: 'Dashboard', sub: 'Cash, receivables, payables, and this month’s result.' },
   sales: { title: 'Sales (AR)', sub: 'Add or edit invoices here, or post from an Invoice PDF. Record collections against the balance.' },
   purchases: { title: 'Purchases (AP)', sub: 'Supplier bills, contractor claims, and bill payments.' },
+  pay: { title: 'Pay workforce', sub: 'Pay contractors and freelancers from Bank Islam. Employees with EPF/SOCSO still use the Payslip tool.' },
   expenses: { title: 'Expenses', sub: 'Paid-now costs. Drawings are not expenses — record those on Bank.' },
   bank: { title: 'Bank', sub: 'Per-account register, transfers, drawings, and a simple reconcile.' },
   journal: { title: 'Journal', sub: 'Edit an unlocked journal, or post a manual one. Void creates a reversing entry.' },
@@ -19,6 +20,7 @@ let cache = {
   expenses: [],
   journals: [],
   vendors: [],
+  workerPayments: [],
 };
 
 function $(id) {
@@ -89,7 +91,7 @@ function bankOptions(selected) {
         '"' +
         (b.id === selected ? ' selected' : '') +
         '>' +
-        esc(b.name + (b.accountNo ? ' · ' + b.accountNo : '')) +
+        esc(b.name + (b.accountName ? ' · ' + b.accountName : '') + (b.accountNo ? ' · ' + b.accountNo : '')) +
         '</option>'
       );
     })
@@ -128,16 +130,17 @@ function vendorOptions(selected) {
 }
 
 function workerOptions(selected) {
-  let html = '<option value="">—</option>';
+  let html = '<option value="">Select a worker…</option>';
   const rows = window.TCVWorkers ? window.TCVWorkers.list() : [];
   rows.forEach((w) => {
+    const kind = window.TCVWorkers.typeLabel ? window.TCVWorkers.typeLabel(w.type) : w.type;
     html +=
       '<option value="' +
       esc(w.id) +
       '"' +
       (w.id === selected ? ' selected' : '') +
       '>' +
-      esc(w.name) +
+      esc((w.name || 'Untitled') + ' · ' + kind) +
       '</option>';
   });
   return html;
@@ -145,14 +148,15 @@ function workerOptions(selected) {
 
 async function refreshData() {
   await L.ensureSeeded();
-  const [invoices, bills, expenses, journals, vendors] = await Promise.all([
+  const [invoices, bills, expenses, journals, vendors, workerPayments] = await Promise.all([
     L.listInvoices(),
     L.listBills(),
     L.listExpenses(),
     L.listJournals(),
     L.listVendors(),
+    L.listWorkerPayments(),
   ]);
-  cache = { invoices, bills, expenses, journals, vendors };
+  cache = { invoices, bills, expenses, journals, vendors, workerPayments };
 }
 
 function currentView() {
@@ -207,15 +211,14 @@ function renderDashboard() {
   const month = thisMonth();
   const bals = L.balancesFromJournals(cache.journals);
   const monthBals = L.balancesFromJournals(cache.journals, { from: month + '-01', to: month + '-31' });
-      let cash = 0;
-      const seenGl = {};
-      L.listBankAccounts().forEach((b) => {
-        cash += L.money(b.openingBalance);
-        if (!seenGl[b.glCode]) {
-          seenGl[b.glCode] = true;
-          cash += (bals[b.glCode] && bals[b.glCode].net) || 0;
-        }
-      });
+  let cash = 0;
+  const seenGl = {};
+  L.listBankAccounts().forEach((b) => {
+    if (!seenGl[b.glCode]) {
+      seenGl[b.glCode] = true;
+      cash += (bals[b.glCode] && bals[b.glCode].net) || 0;
+    }
+  });
   const ar = cache.invoices.reduce((s, i) => s + L.money(i.balance), 0);
   const ap = cache.bills.reduce((s, i) => s + L.money(i.balance), 0);
   let income = 0;
@@ -651,6 +654,80 @@ function renderPurchases() {
   });
 }
 
+/* ---------- Pay workforce ---------- */
+function renderPay() {
+  const defBank = L.defaultBankAccount() || {};
+  const rows = (cache.workerPayments || [])
+    .map((p) => {
+      return (
+        '<tr><td>' +
+        esc(p.date) +
+        '</td><td>' +
+        esc(p.workerName || workerName(p.workerId) || '—') +
+        '</td><td>' +
+        esc(p.workerKind === 'employee' ? 'Employee' : p.workerKind === 'freelancer' ? 'Freelancer' : 'Contractor') +
+        '</td><td>' +
+        esc(projectName(p.projectId) || '—') +
+        '</td><td>' +
+        esc(p.memo || '') +
+        '</td><td class="num">' +
+        rm(p.amount) +
+        '</td></tr>'
+      );
+    })
+    .join('');
+  $('viewRoot').innerHTML =
+    '<div class="panel"><h2>Pay a contractor</h2>' +
+    '<p class="muted">Money leaves the company Bank Islam account. Register people first in <a href="../../tools/workforce/">Workforce</a>. For a PDF payment advice, use <a href="../../tools/payslip/">Payslip / Payment Advice</a>.</p>' +
+    '<form id="payForm" class="form-grid">' +
+    '<div><label>Worker</label><select name="workerId">' +
+    workerOptions('') +
+    '</select></div>' +
+    '<div><label>Date</label><input type="date" name="date" value="' +
+    today() +
+    '"></div>' +
+    '<div><label>Amount (RM)</label><input type="number" step="0.01" name="amount" required></div>' +
+    '<div><label>Project</label><select name="projectId">' +
+    projectOptions('') +
+    '</select></div>' +
+    '<div><label>Pay from bank</label><select name="bankAccountId">' +
+    bankOptions(defBank.id) +
+    '</select></div>' +
+    '<div class="span-2"><label>Memo</label><input type="text" name="memo" placeholder="e.g. Milestone 1 — ICA"></div>' +
+    '<div class="span-2"><label class="check-row"><input type="checkbox" name="paidNow" checked> Paid now from this bank. Uncheck to record an unpaid bill instead.</label></div>' +
+    '</form><div class="btn-row"><button class="btn" id="payBtn">Post payment</button></div></div>' +
+    '<div class="panel"><h2>Recent workforce payments</h2>' +
+    (rows
+      ? '<table class="data-table"><thead><tr><th>Date</th><th>Worker</th><th>Type</th><th>Project</th><th>Memo</th><th class="num">Amount</th></tr></thead><tbody>' +
+        rows +
+        '</tbody></table>'
+      : '<p class="muted">No workforce payments yet.</p>') +
+    '</div>';
+
+  $('payBtn').addEventListener('click', async () => {
+    const form = $('payForm');
+    const workerId = formVal(form, 'workerId');
+    const worker = window.TCVWorkers ? window.TCVWorkers.get(workerId) : null;
+    try {
+      await L.payWorker({
+        workerId,
+        workerName: worker ? worker.name : '',
+        workerKind: worker ? worker.type : 'contractor',
+        date: formVal(form, 'date'),
+        amount: formVal(form, 'amount'),
+        projectId: formVal(form, 'projectId'),
+        bankAccountId: formVal(form, 'bankAccountId') || defBank.id,
+        memo: formVal(form, 'memo'),
+        paidNow: !!form.querySelector('[name="paidNow"]').checked,
+      });
+      status('Payment posted from ' + (defBank.name || 'the main bank') + '.');
+      await reload();
+    } catch (e) {
+      status(e.message || 'Could not post payment.');
+    }
+  });
+}
+
 /* ---------- Expenses / bank / journal ---------- */
 function renderExpenses() {
   const rows = cache.expenses
@@ -777,7 +854,7 @@ function renderBank() {
   const selected = ($('bankPick') && $('bankPick').value) || (banks[0] && banks[0].id) || '';
   const bank = banks.find((b) => b.id === selected) || banks[0];
   const lines = bank ? bankLines(bank) : [];
-  let run = L.money(bank ? bank.openingBalance : 0);
+  let run = 0;
   const body = lines
     .map((l) => {
       run = L.money(run + l.debit - l.credit);
@@ -839,15 +916,6 @@ function renderBank() {
     '<div class="panel"><h2>Register</h2>' +
     (body
       ? '<table class="data-table"><thead><tr><th>Date</th><th>Memo</th><th>Source</th><th class="num">In</th><th class="num">Out</th><th class="num">Balance</th><th></th></tr></thead><tbody>' +
-        (bank && bank.openingBalance
-          ? '<tr><td>' +
-            esc(bank.openingDate || '') +
-            '</td><td>Opening balance</td><td>OPEN</td><td class="num">' +
-            D.fmt(bank.openingBalance) +
-            '</td><td></td><td class="num">' +
-            D.fmt(bank.openingBalance) +
-            '</td><td></td></tr>'
-          : '') +
         body +
         '</tbody></table>'
       : '<p class="muted">No movements on this account yet.</p>') +
@@ -1208,7 +1276,7 @@ function reportHtml(kind, range) {
     let liab = 0;
     rows.push({ head: true, label: 'Assets' });
     L.listBankAccounts().forEach((b) => {
-      const n = L.money(((all[b.glCode] && all[b.glCode].net) || 0) + L.money(b.openingBalance));
+      const n = L.money((all[b.glCode] && all[b.glCode].net) || 0);
       rows.push({ label: b.name, amount: n });
       assets += n;
     });
@@ -1365,6 +1433,8 @@ function renderSettings() {
         '<tr><td>' +
         esc(b.name) +
         '</td><td>' +
+        esc(b.accountName || '') +
+        '</td><td>' +
         esc(b.accountNo) +
         '</td><td>' +
         esc(b.glCode) +
@@ -1386,7 +1456,8 @@ function renderSettings() {
     '<div class="panel"><h2>Bank accounts</h2>' +
     '<form id="bankForm" class="form-grid">' +
     '<input type="hidden" name="id" value="">' +
-    '<div><label>Name</label><input name="name" placeholder="Maybank"></div>' +
+    '<div><label>Bank name</label><input name="name" placeholder="Bank Islam"></div>' +
+    '<div><label>Account name</label><input name="accountName" placeholder="Saiful Iqbal"></div>' +
     '<div><label>Account no.</label><input name="accountNo"></div>' +
     '<div><label>GL code</label><select name="glCode">' +
     accountOptions('1000', (a) => a.type === 'asset') +
@@ -1397,7 +1468,7 @@ function renderSettings() {
     '<button class="btn ghost" id="bankNewBtn">New</button></div>' +
     '<p class="muted">Give each bank its own GL asset code (e.g. 1000, 1001) so registers stay separate. Click Edit on a row to change it.</p>' +
     (bankRows
-      ? '<table class="data-table"><thead><tr><th>Name</th><th>Account</th><th>GL</th><th class="num">Opening</th><th></th></tr></thead><tbody>' +
+      ? '<table class="data-table"><thead><tr><th>Bank</th><th>Account name</th><th>Account no.</th><th>GL</th><th class="num">Opening</th><th></th></tr></thead><tbody>' +
         bankRows +
         '</tbody></table>'
       : '') +
@@ -1451,6 +1522,7 @@ function renderSettings() {
       await L.upsertBankAccount({
         id: formVal(form, 'id') || undefined,
         name: formVal(form, 'name'),
+        accountName: formVal(form, 'accountName'),
         accountNo: formVal(form, 'accountNo'),
         glCode: formVal(form, 'glCode'),
         openingBalance: formVal(form, 'openingBalance'),
@@ -1466,6 +1538,7 @@ function renderSettings() {
     const form = $('bankForm');
     setForm(form, 'id', '');
     setForm(form, 'name', '');
+    setForm(form, 'accountName', '');
     setForm(form, 'accountNo', '');
     setForm(form, 'openingBalance', 0);
     setForm(form, 'openingDate', '');
@@ -1477,6 +1550,7 @@ function renderSettings() {
       const form = $('bankForm');
       setForm(form, 'id', b.id);
       setForm(form, 'name', b.name);
+      setForm(form, 'accountName', b.accountName);
       setForm(form, 'accountNo', b.accountNo);
       setForm(form, 'glCode', b.glCode);
       setForm(form, 'openingBalance', b.openingBalance);
@@ -1541,6 +1615,7 @@ const RENDER = {
   dashboard: renderDashboard,
   sales: renderSales,
   purchases: renderPurchases,
+  pay: renderPay,
   expenses: renderExpenses,
   bank: renderBank,
   journal: renderJournal,

@@ -37,7 +37,7 @@ window.TCVLedger = (function () {
   };
 
   const SEED_ACCOUNTS = [
-    { code: '1000', name: 'Bank — Main', type: 'asset', taxFlag: '' },
+    { code: '1000', name: 'Bank — Bank Islam', type: 'asset', taxFlag: '' },
     { code: '1100', name: 'Accounts receivable', type: 'asset', taxFlag: '' },
     { code: '2000', name: 'Accounts payable', type: 'liability', taxFlag: '' },
     { code: '2100', name: 'SST payable', type: 'liability', taxFlag: 'sst' },
@@ -68,6 +68,15 @@ window.TCVLedger = (function () {
     { code: '6070', name: 'Insurance', type: 'expense', taxFlag: '' },
     { code: '6090', name: 'Miscellaneous', type: 'expense', taxFlag: '' },
   ];
+
+  const SEED_VERSION = 2;
+  const MAIN_BANK = {
+    name: 'Bank Islam',
+    accountName: 'Saiful Iqbal',
+    accountNo: '01050026135751',
+    glCode: '1000',
+    openingBalance: 380,
+  };
 
   let accounts = [];
   let bankAccounts = [];
@@ -133,9 +142,25 @@ window.TCVLedger = (function () {
     if (metaSnap.exists) meta = Object.assign({}, meta, metaSnap.data());
   }
 
-  async function ensureSeeded() {
-    if (seeded && accounts.length) return;
-    await loadCaches();
+  async function wipeCollection(name) {
+    const snap = await db().collection(name).get();
+    let batch = db().batch();
+    let n = 0;
+    const commits = [];
+    snap.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+      n += 1;
+      if (n >= 400) {
+        commits.push(batch.commit());
+        batch = db().batch();
+        n = 0;
+      }
+    });
+    if (n) commits.push(batch.commit());
+    if (commits.length) await Promise.all(commits);
+  }
+
+  async function seedMissingAccounts() {
     const have = {};
     accounts.forEach((a) => {
       have[a.code] = a;
@@ -144,37 +169,86 @@ window.TCVLedger = (function () {
     SEED_ACCOUNTS.forEach((row) => {
       if (!have[row.code]) {
         const ref = db().collection('accounts').doc();
+        writes.push(ref.set(Object.assign({}, row, { createdAt: now(), updatedAt: now() })));
+      } else if (row.code === CODES.BANK && have[row.code].name !== row.name) {
         writes.push(
-          ref.set(
-            Object.assign({}, row, { createdAt: now(), updatedAt: now() })
-          )
+          db()
+            .collection('accounts')
+            .doc(have[row.code].id)
+            .set({ name: row.name, updatedAt: now() }, { merge: true })
         );
       }
     });
-    if (!bankAccounts.length) {
-      const ref = db().collection('bankAccounts').doc();
-      writes.push(
-        ref.set({
-          name: 'Main bank',
-          accountNo: '',
-          glCode: CODES.BANK,
-          openingBalance: 0,
-          openingDate: '',
-          createdAt: now(),
-          updatedAt: now(),
-        })
-      );
-      writes.push(
-        db().collection('meta').doc('ledger').set(
-          { defaultBankAccountId: ref.id, sstRegistered: false, updatedAt: now() },
-          { merge: true }
-        )
-      );
-    }
     if (writes.length) {
       await Promise.all(writes);
       await loadCaches();
     }
+  }
+
+  async function seedMainBankAndCapital() {
+    const date = (window.TCVNumbers && window.TCVNumbers.isoToday()) || now().slice(0, 10);
+    const ref = db().collection('bankAccounts').doc();
+    await ref.set({
+      name: MAIN_BANK.name,
+      accountName: MAIN_BANK.accountName,
+      accountNo: MAIN_BANK.accountNo,
+      glCode: MAIN_BANK.glCode,
+      openingBalance: MAIN_BANK.openingBalance,
+      openingDate: date,
+      createdAt: now(),
+      updatedAt: now(),
+    });
+    await saveMeta({
+      defaultBankAccountId: ref.id,
+      sstRegistered: false,
+      seedVersion: SEED_VERSION,
+    });
+    await loadCaches();
+    seeded = true;
+    if (MAIN_BANK.openingBalance) {
+      await recordOpening({
+        date: date,
+        accountCode: MAIN_BANK.glCode,
+        amount: MAIN_BANK.openingBalance,
+      });
+    }
+  }
+
+  async function resetLedgerBooks() {
+    seeded = false;
+    const cols = [
+      'journals',
+      'invoices',
+      'bills',
+      'billPayments',
+      'expenses',
+      'periods',
+      'bankAccounts',
+      'vendors',
+      'recurring',
+      'workerPayments',
+    ];
+    for (let i = 0; i < cols.length; i++) {
+      await wipeCollection(cols[i]);
+    }
+    await db().collection('meta').doc('ledger').delete();
+    meta = { defaultBankAccountId: '', sstRegistered: false };
+    bankAccounts = [];
+    await loadCaches();
+    await seedMissingAccounts();
+    await seedMainBankAndCapital();
+    seeded = true;
+  }
+
+  async function ensureSeeded() {
+    if (seeded && accounts.length && meta.seedVersion === SEED_VERSION && bankAccounts.length) return;
+    await loadCaches();
+    if (meta.seedVersion !== SEED_VERSION) {
+      await resetLedgerBooks();
+      return;
+    }
+    await seedMissingAccounts();
+    if (!bankAccounts.length) await seedMainBankAndCapital();
     seeded = true;
   }
 
@@ -204,6 +278,7 @@ window.TCVLedger = (function () {
     const ref = data.id ? col.doc(data.id) : col.doc();
     const row = {
       name: String(data.name || '').trim(),
+      accountName: String(data.accountName || '').trim(),
       accountNo: String(data.accountNo || '').trim(),
       glCode: String(data.glCode || CODES.BANK).trim(),
       openingBalance: money(data.openingBalance),
@@ -925,6 +1000,67 @@ window.TCVLedger = (function () {
     return data.id;
   }
 
+  async function payWorker(data) {
+    await ensureSeeded();
+    const amount = money(data.amount);
+    if (amount <= 0) throw new Error('Enter an amount to pay.');
+    if (!data.workerId) throw new Error('Select a worker.');
+    const date = data.date || window.TCVNumbers.isoToday();
+    const kind = data.workerKind || 'contractor';
+    const costCode = kind === 'employee' ? CODES.SALARY : CODES.CONTRACTOR;
+    const bankId = data.bankAccountId || (defaultBankAccount() && defaultBankAccount().id) || '';
+    const bankCode = bankGlCode(bankId);
+    const name = data.workerName || 'worker';
+    const memo = data.memo || 'Pay ' + name;
+    const paidNow = data.paidNow !== false;
+    if (!paidNow) {
+      return recordBill({
+        date,
+        dueDate: data.dueDate || date,
+        amount,
+        accountCode: costCode,
+        workerId: data.workerId,
+        vendorName: name,
+        projectId: data.projectId || '',
+        memo,
+      });
+    }
+    const ref = db().collection('workerPayments').doc();
+    const jid = await postJournal({
+      date,
+      memo,
+      sourceType: 'WPAY',
+      sourceId: ref.id,
+      projectId: data.projectId || '',
+      workerId: data.workerId,
+      bankAccountId: bankId,
+      lines: [line(costCode, amount, 0, memo), line(bankCode, 0, amount, memo)],
+      allowDuplicate: true,
+    });
+    const row = {
+      workerId: data.workerId,
+      workerName: name,
+      workerKind: kind,
+      date,
+      amount,
+      projectId: data.projectId || '',
+      bankAccountId: bankId,
+      memo,
+      paidNow: true,
+      journalId: jid,
+      createdAt: now(),
+    };
+    await ref.set(row);
+    return Object.assign({ id: ref.id }, row);
+  }
+
+  async function listWorkerPayments() {
+    const snap = await db().collection('workerPayments').get();
+    return snap.docs
+      .map((d) => Object.assign({}, d.data(), { id: d.id }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }
+
   async function recordDrawing(data) {
     await ensureSeeded();
     const amount = money(data.amount);
@@ -1080,6 +1216,7 @@ window.TCVLedger = (function () {
     money,
     periodKey,
     ensureSeeded,
+    resetLedgerBooks,
     loadCaches,
     listAccounts,
     listBankAccounts,
@@ -1112,6 +1249,8 @@ window.TCVLedger = (function () {
     payBill,
     recordExpense,
     updateExpense,
+    payWorker,
+    listWorkerPayments,
     recordDrawing,
     recordTransfer,
     recordOpening,

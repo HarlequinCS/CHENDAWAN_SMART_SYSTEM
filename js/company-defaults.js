@@ -14,4 +14,7 @@ window.TCV_COMPANY = {
   ownerTitle: 'Sole Proprietor, Team ChendAwan Ventures',
   contactLine: '+60 14-720 7787  |  iqbal.chendawan@gmail.com',
   bankMethod: 'Online Banking Transfer / DuitNow',
+  bankName: 'Bank Islam',
+  bankAccName: 'Saiful Iqbal',
+  bankAccNo: '01050026135751',
 };
