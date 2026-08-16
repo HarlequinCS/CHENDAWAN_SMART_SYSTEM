@@ -273,6 +273,58 @@ window.TCVDoc = (function () {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  function selectedIssuedId(selectId) {
+    const sel = document.getElementById(selectId);
+    if (!sel || sel.selectedIndex < 0) return '';
+    const opt = sel.options[sel.selectedIndex];
+    return (opt && opt.getAttribute('data-id')) || '';
+  }
+
+  async function fillIssuedSelect(opts) {
+    opts = opts || {};
+    const sel = document.getElementById(opts.selectId);
+    if (!sel) return [];
+    const projectId =
+      opts.projectId != null
+        ? opts.projectId
+        : ((document.getElementById('projectId') || {}).value || '');
+    const types = opts.types || [];
+    const current = opts.value !== undefined ? opts.value : sel.value;
+    const emptyLabel = opts.emptyLabel || 'Select…';
+    sel.innerHTML = '';
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = emptyLabel;
+    sel.appendChild(empty);
+    if (!projectId || !window.TCVProjects || !window.TCVProjects.listDocuments) return [];
+    let docs = [];
+    try {
+      docs = await window.TCVProjects.listDocuments(projectId);
+    } catch (e) {
+      return [];
+    }
+    const rows = docs.filter((d) => !types.length || types.indexOf(d.type) >= 0);
+    rows.forEach((d) => {
+      const opt = document.createElement('option');
+      opt.value = d.number || '';
+      opt.setAttribute('data-id', d.id || '');
+      opt.textContent =
+        typeof opts.labelFn === 'function' ? opts.labelFn(d) || d.number || d.type : d.number || d.type;
+      sel.appendChild(opt);
+    });
+    if (current) {
+      const found = Array.prototype.some.call(sel.options, (o) => o.value === current);
+      if (!found) {
+        const extra = document.createElement('option');
+        extra.value = current;
+        extra.textContent = current;
+        sel.appendChild(extra);
+      }
+      sel.value = current;
+    }
+    return rows;
+  }
+
   function bindDraftActions(opts) {
     const { storageKey, collectState, applyState, defaultState } = opts;
     const issueGate = opts.issueGate;
@@ -382,6 +434,8 @@ window.TCVDoc = (function () {
     createIssueGate,
     loadIssuedIfPresent,
     downloadBlob,
+    fillIssuedSelect,
+    selectedIssuedId,
     amountInWords,
   };
 })();

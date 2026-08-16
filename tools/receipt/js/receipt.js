@@ -122,6 +122,53 @@ function applyState(state) {
   (state.notes || []).forEach((n) => addNote(n));
   if (numbering) numbering.refresh();
   else renderPreview();
+  refreshRefSelect();
+}
+
+async function refreshRefSelect() {
+  let invoices = [];
+  if (window.TCVLedger && window.TCVLedger.listInvoices) {
+    try {
+      invoices = await window.TCVLedger.listInvoices();
+    } catch (e) {}
+  }
+  await D.fillIssuedSelect({
+    selectId: 'refInvoice',
+    types: ['INV'],
+    emptyLabel: 'No invoice',
+    labelFn: function (d) {
+      const row = invoices.find((i) => i.number === d.number || i.id === d.id);
+      const bal = row ? Math.round((parseFloat(row.balance) || 0) * 100) / 100 : null;
+      return (d.number || 'INV') + (bal == null ? '' : '  ·  RM ' + D.fmt(bal) + ' remaining');
+    },
+  });
+}
+
+async function fillFromInvoice(docId) {
+  if (!docId || !window.TCVFirebase) return;
+  const doc = await window.TCVFirebase.getDocument(docId);
+  if (!doc || doc.type !== 'INV') return;
+  const fields = (doc.payload && doc.payload.fields) || {};
+  const setIf = (id, v) => {
+    const el = document.getElementById(id);
+    if (el && v) el.value = v;
+  };
+  setIf('projName', fields.projName);
+  setIf('projFor', fields.projStage);
+  let remaining = parseFloat(fields.amount);
+  if (window.TCVLedger && window.TCVLedger.findInvoiceByNumber) {
+    const inv = await window.TCVLedger.findInvoiceByNumber(doc.number);
+    if (inv) remaining = parseFloat(inv.balance);
+  }
+  if (!isNaN(remaining) && remaining >= 0) {
+    const amt = document.getElementById('amount');
+    if (amt) amt.value = remaining.toFixed(2);
+    const words = document.getElementById('amountWords');
+    if (words) words.value = D.amountInWords(remaining);
+    const out = document.getElementById('outstanding');
+    if (out) out.value = remaining ? 'RM ' + D.fmt(remaining) : 'Nil / Paid in Full';
+  }
+  renderPreview();
 }
 
 function defaultState() {
@@ -190,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TCVProjects.bindPicker({
           prefix: window.TCVNumbers.PREFIX.receipt,
           onChange: () => {
+            refreshRefSelect();
             if (numbering) numbering.refresh();
             else renderPreview();
           },
@@ -227,6 +275,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       document.getElementById('addNoteBtn').addEventListener('click', () => addNote());
+      document.getElementById('refInvoice').addEventListener('change', () => {
+        const docId = D.selectedIssuedId('refInvoice');
+        if (docId) {
+          fillFromInvoice(docId).catch((e) => {
+            D.setStatus(e.message || 'Could not load that invoice.');
+          });
+        } else if (numbering) numbering.refresh();
+        else renderPreview();
+      });
       document.getElementById('downloadBtn').addEventListener('click', async () => {
         try {
           const decision = await issueGate.beforeDownload({

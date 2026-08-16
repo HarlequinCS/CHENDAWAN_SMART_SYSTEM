@@ -134,6 +134,13 @@ window.TCVLegal = (function () {
       }
       if (numbering) numbering.refresh();
       else fill();
+      if (window.TCVDoc && window.TCVDoc.fillIssuedSelect && opts.relatedId) {
+        window.TCVDoc.fillIssuedSelect({
+          selectId: opts.relatedId,
+          types: opts.relatedTypes || ['QUO', 'INV'],
+          emptyLabel: 'None',
+        });
+      }
     }
 
     function defaultState() {
@@ -229,6 +236,13 @@ window.TCVLegal = (function () {
               prefix: opts.prefix,
               clientSelectId: document.querySelector('select#clientId') ? 'clientId' : null,
               onChange: function () {
+                if (window.TCVDoc && window.TCVDoc.fillIssuedSelect && opts.relatedId) {
+                  window.TCVDoc.fillIssuedSelect({
+                    selectId: opts.relatedId,
+                    types: opts.relatedTypes || ['QUO', 'INV'],
+                    emptyLabel: 'None',
+                  });
+                }
                 if (numbering) numbering.refresh();
                 else fill();
               },

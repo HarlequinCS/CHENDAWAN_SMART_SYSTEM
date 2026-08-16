@@ -302,10 +302,15 @@ function applyKindUi() {
   setText('noLabel', cn ? 'Credit note no.' : 'Invoice no.');
   setText('dateLabel', cn ? 'Credit note date' : 'Invoice date');
   setText('quoteLabel', cn ? 'Against invoice' : 'Reference quotation no.');
+  setText(
+    'quoteHint',
+    cn
+      ? 'Issued invoices for this project. Remaining AR is credited by default.'
+      : 'Pick an issued quotation for this project, or leave blank.'
+  );
   setText('kindHint', cn
     ? 'Select the invoice to reverse. Remaining AR is filled in; reduce lines for a partial credit.'
     : 'Use a credit note to reverse part of an issued invoice without editing it.');
-  hide('sourceInvWrap', !cn);
   hide('payFieldset', cn);
   hide('scheduleFieldset', cn);
   const dueWrap = document.getElementById('invDue');
@@ -319,7 +324,7 @@ function applyKindUi() {
     const issueEl = document.getElementById('issueNo');
     if (project && issueEl) issueEl.value = String(window.TCVProjects.peekIssue(project, currentPrefix()));
   }
-  if (cn) loadSourceInvoices();
+  refreshQuoteSelect();
   if (numbering) numbering.refresh();
   else renderPreview();
 }
@@ -351,34 +356,43 @@ function scaleItems(items, originalTotal, remaining) {
   });
 }
 
-async function loadSourceInvoices() {
-  const sel = document.getElementById('sourceInvId');
-  if (!sel) return;
-  const projectId = (document.getElementById('projectId') || {}).value || '';
-  const current = sel.value;
-  sel.innerHTML = '<option value="">Select an invoice…</option>';
-  if (!projectId || !window.TCVProjects) return;
-  try {
-    const docs = await window.TCVProjects.listDocuments(projectId);
-    const invs = docs.filter((d) => d.type === 'INV');
-    let invoices = [];
-    if (window.TCVLedger && window.TCVLedger.listInvoices) {
+async function refreshQuoteSelect() {
+  const cn = isCreditNote();
+  let invoices = [];
+  if (cn && window.TCVLedger && window.TCVLedger.listInvoices) {
+    try {
       invoices = await window.TCVLedger.listInvoices();
-    }
-    invs.forEach((d) => {
-      const row = invoices.find((i) => i.number === d.number || i.id === d.id);
-      const bal = row ? money(row.balance) : null;
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent =
-        (d.number || 'INV') +
-        (bal == null ? '' : '  ·  RM ' + D.fmt(bal) + ' remaining');
-      sel.appendChild(opt);
-    });
-    if (current && Array.prototype.some.call(sel.options, (o) => o.value === current)) {
-      sel.value = current;
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
+  await D.fillIssuedSelect({
+    selectId: 'invQuote',
+    types: cn ? ['INV'] : ['QUO'],
+    emptyLabel: cn ? 'Select an invoice…' : 'No quotation',
+    labelFn: cn
+      ? function (d) {
+          const row = invoices.find((i) => i.number === d.number || i.id === d.id);
+          const bal = row ? money(row.balance) : null;
+          return (d.number || 'INV') + (bal == null ? '' : '  ·  RM ' + D.fmt(bal) + ' remaining');
+        }
+      : null,
+  });
+}
+
+async function fillFromQuotation(docId) {
+  if (!docId || !window.TCVFirebase) return;
+  const doc = await window.TCVFirebase.getDocument(docId);
+  if (!doc || doc.type !== 'QUO') return;
+  const payload = doc.payload || {};
+  const fields = payload.fields || {};
+  const proj = document.getElementById('projName');
+  if (proj && fields.projName) proj.value = fields.projName;
+  const box = document.getElementById('itemsContainer');
+  if (box && payload.items && payload.items.length) {
+    box.innerHTML = '';
+    itemCount = 0;
+    payload.items.forEach((it) => addItem(it));
+  }
+  renderPreview();
 }
 
 async function fillFromSourceInvoice(docId) {
@@ -483,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TCVProjects.bindPicker({
           prefix: window.TCVNumbers.PREFIX.invoice,
           onChange: () => {
-            if (isCreditNote()) loadSourceInvoices();
+            refreshQuoteSelect();
             if (numbering) numbering.refresh();
             else renderPreview();
           },
@@ -497,10 +511,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('docKind').value = 'CN';
         applyKindUi();
       });
-      document.getElementById('sourceInvId').addEventListener('change', () => {
-        fillFromSourceInvoice(document.getElementById('sourceInvId').value).catch((e) => {
-          D.setStatus(e.message || 'Could not load that invoice.');
-        });
+      document.getElementById('invQuote').addEventListener('change', () => {
+        const docId = D.selectedIssuedId('invQuote');
+        const source = document.getElementById('sourceInvId');
+        if (source) source.value = isCreditNote() ? docId : '';
+        if (isCreditNote()) {
+          if (docId) {
+            fillFromSourceInvoice(docId).catch((e) => {
+              D.setStatus(e.message || 'Could not load that invoice.');
+            });
+          }
+          return;
+        }
+        if (docId) {
+          fillFromQuotation(docId).catch((e) => {
+            D.setStatus(e.message || 'Could not load that quotation.');
+          });
+        } else if (numbering) numbering.refresh();
+        else renderPreview();
       });
       document.getElementById('addItemBtn').addEventListener('click', () => addItem());
       document.getElementById('addNoteBtn').addEventListener('click', () => addNote());

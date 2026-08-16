@@ -214,17 +214,21 @@ window.TCVNumbers = (function () {
     }
 
     if (relatedEl) {
-      relatedEl.addEventListener('input', () => {
+      const onRelated = () => {
         const p = parse(relatedEl.value);
         if (p && window.TCVProjects) {
           const proj = window.TCVProjects.findByNumber(p);
           if (proj) {
+            const projectSel = document.getElementById('projectId');
+            if (projectSel && projectSel.value === proj.id) {
+              refresh();
+              return;
+            }
             const clientSel = document.getElementById('clientId');
             if (clientSel && proj.clientId && clientSel.value !== proj.clientId) {
               clientSel.value = proj.clientId;
               if (window.TCVClients) window.TCVClients.syncSelected();
             }
-            const projectSel = document.getElementById('projectId');
             if (projectSel) projectSel.value = proj.id;
             window.TCVProjects.syncSelected();
             return;
@@ -241,7 +245,9 @@ window.TCVNumbers = (function () {
         jobEl.value = String(p.job);
         if (issueEl && !issueEl.value) issueEl.value = '1';
         refresh();
-      });
+      };
+      relatedEl.addEventListener('input', onRelated);
+      relatedEl.addEventListener('change', onRelated);
     }
 
     return {

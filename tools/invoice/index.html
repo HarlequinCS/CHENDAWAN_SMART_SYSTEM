@@ -68,11 +68,6 @@
       <label id="noLabel">Invoice no.</label>
       <input type="text" id="invNo" readonly placeholder="Select a project">
       <p class="field-hint" id="invNoHint"></p>
-      <div id="sourceInvWrap" hidden>
-        <label>Invoice to credit</label>
-        <select id="sourceInvId"></select>
-        <p class="field-hint">Remaining AR is credited by default. Reduce lines if you only reverse part of the invoice.</p>
-      </div>
       <div class="row2">
         <div>
           <label id="dateLabel">Invoice date</label>
@@ -84,7 +79,11 @@
         </div>
       </div>
       <label id="quoteLabel">Reference quotation no.</label>
-      <input type="text" id="invQuote" placeholder="Paste QUO/2026/001-WSD-100/01 to auto-fill">
+      <select id="invQuote">
+        <option value="">No quotation</option>
+      </select>
+      <p class="field-hint" id="quoteHint">Pick an issued quotation for this project, or leave blank.</p>
+      <input type="hidden" id="sourceInvId" value="">
     </fieldset>
 
     <fieldset>

@@ -6,6 +6,7 @@ window.TCVLegal.boot({
   noId: 'docNo',
   hintId: 'docNoHint',
   relatedId: 'relatedNo',
+  relatedTypes: ['MSA', 'QUO'],
   fieldIds: [
     'serviceCode', 'jobNo', 'issueNo', 'docNo', 'relatedNo',
     'clientName', 'clientAddr', 'projName', 'businessHours', 'supportChannel',
