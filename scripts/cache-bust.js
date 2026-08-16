@@ -8,7 +8,7 @@ const path = require('path');
 const root = path.resolve(process.argv[2] || process.cwd());
 const version = String(process.env.GITHUB_SHA || process.env.TCV_BUILD || Date.now()).slice(0, 12);
 
-const SKIP_DIR = new Set(['.git', '.github', 'node_modules', 'dist', 'scripts']);
+const SKIP_DIR = new Set(['.git', '.github', 'node_modules', 'dist', 'scripts', 'tmp-bust']);
 const ATTR_RE =
   /(href|src)="((?!https?:\/\/|\/\/|data:|mailto:)[^"?]+?\.(?:css|js|png|jpe?g|svg|webp|ico|gif))(?:\?[^"]*)?"/gi;
 

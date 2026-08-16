@@ -116,42 +116,47 @@ window.TCVDoc = (function () {
   }
 
   function withSheetUnlocked(el, fn) {
-    const panel = el ? el.closest('.preview-panel') : null;
-    const printWrap = el ? el.closest('.report-print') : null;
-    const prevOverflow = panel ? panel.style.overflow : '';
-    const prevMax = panel ? panel.style.maxHeight : '';
-    const prevHeight = panel ? panel.style.height : '';
-    const prevPrint = printWrap
-      ? {
-          hidden: printWrap.hidden,
-          position: printWrap.style.position,
-          left: printWrap.style.left,
-          top: printWrap.style.top,
-        }
-      : null;
-    if (panel) {
-      panel.style.overflow = 'visible';
-      panel.style.maxHeight = 'none';
-      panel.style.height = 'auto';
-    }
-    if (printWrap) {
-      printWrap.hidden = false;
-      printWrap.style.position = 'static';
-      printWrap.style.left = 'auto';
-      printWrap.style.top = 'auto';
-    }
+    if (!el) return Promise.resolve().then(fn);
+    const parent = el.parentNode;
+    const next = el.nextSibling;
+    const prevStyle = {
+      width: el.style.width,
+      maxWidth: el.style.maxWidth,
+      padding: el.style.padding,
+      overflow: el.style.overflow,
+      height: el.style.height,
+      backgroundImage: el.style.backgroundImage,
+      position: el.style.position,
+      left: el.style.left,
+      top: el.style.top,
+      zIndex: el.style.zIndex,
+      boxSizing: el.style.boxSizing,
+    };
+    const host = document.createElement('div');
+    host.setAttribute('data-pdf-host', '1');
+    host.style.cssText =
+      'position:fixed;left:0;top:0;width:794px;background:#fff;z-index:2147483647;';
+    el.style.width = '794px';
+    el.style.maxWidth = '794px';
+    el.style.boxSizing = 'border-box';
+    el.style.padding = '68px 68px 83px';
+    el.style.overflow = 'visible';
+    el.style.height = 'auto';
+    el.style.backgroundImage = 'none';
+    el.style.position = 'static';
+    el.style.left = 'auto';
+    el.style.top = 'auto';
+    host.appendChild(el);
+    document.body.appendChild(host);
     const restore = () => {
-      if (panel) {
-        panel.style.overflow = prevOverflow;
-        panel.style.maxHeight = prevMax;
-        panel.style.height = prevHeight;
+      Object.keys(prevStyle).forEach((k) => {
+        el.style[k] = prevStyle[k];
+      });
+      if (parent) {
+        if (next) parent.insertBefore(el, next);
+        else parent.appendChild(el);
       }
-      if (printWrap && prevPrint) {
-        printWrap.hidden = prevPrint.hidden;
-        printWrap.style.position = prevPrint.position;
-        printWrap.style.left = prevPrint.left;
-        printWrap.style.top = prevPrint.top;
-      }
+      if (host.parentNode) host.parentNode.removeChild(host);
     };
     return Promise.resolve()
       .then(fn)
