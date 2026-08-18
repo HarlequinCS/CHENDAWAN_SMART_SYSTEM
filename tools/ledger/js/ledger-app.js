@@ -243,7 +243,10 @@ function renderDashboard() {
   const bals = L.balancesFromJournals(cache.journals);
   const monthBals = L.balancesFromJournals(cache.journals, { from: month + '-01', to: month + '-31' });
   const cash = cashSplit(bals);
-  const ar = cache.invoices.reduce((s, i) => s + L.money(i.balance), 0);
+  const ar = cache.invoices.reduce((s, i) => {
+    if (i.status === 'void' || i.status === 'paid' || i.status === 'credited') return s;
+    return s + L.money(i.balance);
+  }, 0);
   const ap = cache.bills.reduce((s, i) => s + L.money(i.balance), 0);
   let income = 0;
   let expense = 0;
@@ -401,7 +404,7 @@ function renderSales() {
     .join('');
   $('viewRoot').innerHTML =
     '<div class="panel"><h2 id="invFormTitle">Add / edit invoice</h2>' +
-    '<p class="muted">Type an invoice here, or edit one from the list. Downloading an Invoice PDF still posts automatically.</p>' +
+    '<p class="muted">Type an invoice here, or edit one from the list. Downloading an Invoice PDF still posts automatically. Changing status posts or voids the matching bank and AR journals so cash, outstanding, and reports stay in line.</p>' +
     '<form id="invForm" class="form-grid">' +
     '<input type="hidden" name="id" value="">' +
     '<div><label>Number</label><input name="number" placeholder="INV/2026/001-WSD-100/01"></div>' +

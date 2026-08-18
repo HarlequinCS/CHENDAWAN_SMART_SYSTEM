@@ -824,7 +824,93 @@ window.TCVLedger = (function () {
 
   const INVOICE_STATUSES = ['issued', 'partial', 'paid', 'credited', 'void'];
 
-  async function setInvoiceStatus(id, status, opts) {
+  function journalMentionsInvoice(j, inv) {
+    const number = String(inv.number || '');
+    const sourceId = String(j.sourceId || '');
+    const memo = String(j.memo || '');
+    if (inv.journalId && j.id === inv.journalId) return true;
+    if (j.sourceType === 'INV' && (sourceId === inv.documentId || sourceId === inv.id)) return true;
+    if (j.sourceType === 'ARPAY' && sourceId.indexOf('pay_' + inv.id + '_') === 0) return true;
+    if (number && (memo.indexOf(number) !== -1 || sourceId === inv.documentId || sourceId === inv.id)) return true;
+    return (j.lines || []).some((l) => number && String(l.memo || '').indexOf(number) !== -1);
+  }
+
+  function invoiceJournalRole(j, inv) {
+    if (!j || j.reversedBy || j.sourceType === 'void') return '';
+    if (!journalMentionsInvoice(j, inv)) return '';
+    const sourceId = String(j.sourceId || '');
+    if (inv.journalId && j.id === inv.journalId) return 'issue';
+    if (j.sourceType === 'INV' && (sourceId === inv.documentId || sourceId === inv.id)) return 'issue';
+    if (j.sourceType === 'CN') return 'credit';
+    if (j.sourceType === 'ARPAY' || j.sourceType === 'RCP') return 'collect';
+    const lines = j.lines || [];
+    const arCredit = lines.some((l) => l.accountCode === CODES.AR && money(l.credit) > 0);
+    const arDebit = lines.some((l) => l.accountCode === CODES.AR && money(l.debit) > 0);
+    const bankHit = lines.some((l) => l.accountCode === CODES.BANK || l.accountCode === CODES.INVESTMENT);
+    if (arCredit && bankHit) return 'collect';
+    if (arDebit && !bankHit) return 'issue';
+    return '';
+  }
+
+  async function reverseInvoiceCollections(inv) {
+    const journals = await listJournals();
+    const targets = journals.filter((j) => invoiceJournalRole(j, inv) === 'collect');
+    for (let i = 0; i < targets.length; i++) {
+      await reverseJournal(targets[i].id);
+    }
+    return targets.length;
+  }
+
+  async function reverseInvoiceIssue(inv) {
+    const journals = await listJournals();
+    const targets = journals.filter((j) => invoiceJournalRole(j, inv) === 'issue');
+    for (let i = 0; i < targets.length; i++) {
+      await reverseJournal(targets[i].id);
+    }
+    return targets.length;
+  }
+
+  async function creditedOnInvoice(inv) {
+    const notes = await listCreditNotes();
+    return money(
+      notes
+        .filter((n) => n.invoiceId === inv.id || n.invoiceNumber === inv.number)
+        .reduce((s, n) => s + money(n.total), 0)
+    );
+  }
+
+  async function collectedOnInvoice(inv) {
+    const journals = await listJournals();
+    let collected = 0;
+    journals.forEach((j) => {
+      if (invoiceJournalRole(j, inv) !== 'collect') return;
+      (j.lines || []).forEach((l) => {
+        if (l.accountCode === CODES.AR) collected += money(l.credit) - money(l.debit);
+      });
+    });
+    return money(Math.max(0, collected));
+  }
+
+  async function postInvoiceCollection(inv, amount) {
+    const payAmt = money(amount);
+    if (payAmt <= 0) return '';
+    const bank = defaultBankAccount();
+    const bankCode = bankGlCode(bank && bank.id);
+    const payId = 'pay_' + inv.id + '_' + Date.now();
+    return postJournal({
+      date: window.TCVNumbers.isoToday(),
+      memo: 'Payment on ' + (inv.number || inv.id),
+      sourceType: 'ARPAY',
+      sourceId: payId,
+      projectId: inv.projectId,
+      clientId: inv.clientId,
+      bankAccountId: (bank && bank.id) || '',
+      lines: [line(bankCode, payAmt, 0, inv.number), line(CODES.AR, 0, payAmt, inv.number)],
+      allowDuplicate: true,
+    });
+  }
+
+  async function setInvoiceStatus(id, status) {
     await ensureSeeded();
     const wanted = String(status || '').trim().toLowerCase();
     if (INVOICE_STATUSES.indexOf(wanted) === -1) {
@@ -833,13 +919,33 @@ window.TCVLedger = (function () {
     const ref = db().collection('invoices').doc(id);
     const snap = await ref.get();
     if (!snap.exists) throw new Error('Invoice not found.');
-    const inv = snap.data() || {};
+    const inv = Object.assign({}, snap.data(), { id: snap.id });
     const total = money(inv.total);
+    const credits = await creditedOnInvoice(inv);
     const patch = { status: wanted, updatedAt: now() };
-    if (!(opts && opts.keepAmounts)) {
-      if (wanted === 'paid' || wanted === 'credited' || wanted === 'void') patch.balance = 0;
-      else if (wanted === 'issued') patch.balance = total;
+
+    if (wanted === 'issued') {
+      await reverseInvoiceCollections(inv);
+      patch.balance = money(Math.max(0, total - credits));
+      if (credits > 0 && patch.balance > 0) patch.status = 'partial';
+      else if (credits > 0 && patch.balance <= 0) patch.status = 'credited';
+    } else if (wanted === 'paid') {
+      const collected = await collectedOnInvoice(inv);
+      const outstanding = money(Math.max(0, total - credits - collected));
+      if (outstanding > 0) await postInvoiceCollection(inv, outstanding);
+      patch.balance = 0;
+    } else if (wanted === 'void') {
+      await reverseInvoiceCollections(inv);
+      await reverseInvoiceIssue(inv);
+      patch.balance = 0;
+    } else if (wanted === 'credited') {
+      await reverseInvoiceCollections(inv);
+      patch.balance = 0;
+    } else if (wanted === 'partial') {
+      const collected = await collectedOnInvoice(inv);
+      patch.balance = money(Math.max(0, total - credits - collected));
     }
+
     await ref.set(patch, { merge: true });
     return id;
   }
@@ -1427,14 +1533,19 @@ window.TCVLedger = (function () {
     from = String(from || '').slice(0, 10);
     to = String(to || '').slice(0, 10);
     if (!from || !to) throw new Error('Choose a statement period.');
-    const [invoices, creditNotes, docSnap] = await Promise.all([
+    const [invoices, creditNotes, docSnap, journals] = await Promise.all([
       listInvoices(),
       listCreditNotes(),
       db().collection('documents').where('clientId', '==', clientId).get(),
+      listJournals(),
     ]);
+    const reversedReceipts = {};
+    journals.forEach((j) => {
+      if (j.sourceType === 'RCP' && j.sourceId && j.reversedBy) reversedReceipts[j.sourceId] = true;
+    });
     const events = [];
     invoices
-      .filter((i) => i.clientId === clientId)
+      .filter((i) => i.clientId === clientId && i.status !== 'void')
       .forEach((i) => {
         events.push({
           date: eventDate(i),
@@ -1458,6 +1569,7 @@ window.TCVLedger = (function () {
     docSnap.docs.forEach((d) => {
       const row = Object.assign({}, d.data(), { id: d.id });
       if (row.type === 'RCP') {
+        if (reversedReceipts[row.id]) return;
         const fields = (row.payload && row.payload.fields) || {};
         events.push({
           date: String(fields.receiptDate || row.issuedAt || '').slice(0, 10),
