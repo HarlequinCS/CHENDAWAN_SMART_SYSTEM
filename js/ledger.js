@@ -891,25 +891,6 @@ window.TCVLedger = (function () {
     return money(Math.max(0, collected));
   }
 
-  async function postInvoiceCollection(inv, amount) {
-    const payAmt = money(amount);
-    if (payAmt <= 0) return '';
-    const bank = defaultBankAccount();
-    const bankCode = bankGlCode(bank && bank.id);
-    const payId = 'pay_' + inv.id + '_' + Date.now();
-    return postJournal({
-      date: window.TCVNumbers.isoToday(),
-      memo: 'Payment on ' + (inv.number || inv.id),
-      sourceType: 'ARPAY',
-      sourceId: payId,
-      projectId: inv.projectId,
-      clientId: inv.clientId,
-      bankAccountId: (bank && bank.id) || '',
-      lines: [line(bankCode, payAmt, 0, inv.number), line(CODES.AR, 0, payAmt, inv.number)],
-      allowDuplicate: true,
-    });
-  }
-
   async function setInvoiceStatus(id, status) {
     await ensureSeeded();
     const wanted = String(status || '').trim().toLowerCase();
@@ -932,7 +913,11 @@ window.TCVLedger = (function () {
     } else if (wanted === 'paid') {
       const collected = await collectedOnInvoice(inv);
       const outstanding = money(Math.max(0, total - credits - collected));
-      if (outstanding > 0) await postInvoiceCollection(inv, outstanding);
+      if (outstanding > 0.009) {
+        throw new Error(
+          'Marking paid needs a receipt or a ledger collection first. Record the cash in, then set paid.'
+        );
+      }
       patch.balance = 0;
     } else if (wanted === 'void') {
       await reverseInvoiceCollections(inv);
@@ -1436,6 +1421,14 @@ window.TCVLedger = (function () {
     });
   }
 
+  function isLiveJournal(j) {
+    if (!j) return false;
+    if (j.reversedBy) return false;
+    if (j.reversesId) return false;
+    if (j.sourceType === 'void') return false;
+    return true;
+  }
+
   function balancesFromJournals(journals, opts) {
     opts = opts || {};
     const from = opts.from || '';
@@ -1445,7 +1438,7 @@ window.TCVLedger = (function () {
       map[a.code] = { account: a, debit: 0, credit: 0, net: 0 };
     });
     journals.forEach((j) => {
-      if (j.reversedBy) return;
+      if (!isLiveJournal(j)) return;
       if (from && j.date < from) return;
       if (to && j.date > to) return;
       (j.lines || []).forEach((l) => {
@@ -1751,6 +1744,7 @@ window.TCVLedger = (function () {
     recordOpening,
     balancesFromJournals,
     agingBuckets,
+    isLiveJournal,
     findInvoiceByNumber,
     recordInvoicePayment,
     listOrphanInvoices,

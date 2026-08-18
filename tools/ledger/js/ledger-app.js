@@ -269,7 +269,7 @@ function renderDashboard() {
         .reduce((s, i) => s + L.money(i.total - i.balance), 0);
       let costs = 0;
       cache.journals.forEach((j) => {
-        if (j.projectId !== p.id || j.reversedBy) return;
+        if (j.projectId !== p.id || !L.isLiveJournal(j)) return;
         (j.lines || []).forEach((l) => {
           const acc = L.accountByCode(l.accountCode);
           if (acc && acc.type === 'expense') costs += L.money(l.debit - l.credit);
@@ -801,7 +801,7 @@ function renderPay() {
     try {
       const date = formVal(form, 'date');
       const sameDayPsl = cache.journals.some(
-        (j) => !j.reversedBy && j.sourceType === 'PSL' && j.workerId === workerId && j.date === date
+        (j) => L.isLiveJournal(j) && j.sourceType === 'PSL' && j.workerId === workerId && j.date === date
       );
       if (
         sameDayPsl &&
@@ -928,7 +928,7 @@ function bankLines(bank) {
   const code = bank.glCode;
   const lines = [];
   cache.journals.forEach((j) => {
-    if (j.reversedBy) return;
+    if (!L.isLiveJournal(j)) return;
     (j.lines || []).forEach((l) => {
       if (l.accountCode !== code) return;
       if (j.bankAccountId && j.bankAccountId !== bank.id && L.listBankAccounts().length > 1) {
@@ -1461,7 +1461,7 @@ function reportHtml(kind, range) {
       let inAmt = 0;
       let outAmt = 0;
       cache.journals.forEach((j) => {
-        if (j.reversedBy) return;
+        if (!L.isLiveJournal(j)) return;
         if (j.date < range.from || j.date > range.to) return;
         (j.lines || []).forEach((l) => {
           if (l.accountCode !== b.glCode) return;
@@ -1511,7 +1511,7 @@ function reportHtml(kind, range) {
       let inc = 0;
       let cost = 0;
       cache.journals.forEach((j) => {
-        if (j.projectId !== p.id || j.reversedBy) return;
+        if (j.projectId !== p.id || !L.isLiveJournal(j)) return;
         if (j.date < range.from || j.date > range.to) return;
         (j.lines || []).forEach((l) => {
           const acc = L.accountByCode(l.accountCode);
