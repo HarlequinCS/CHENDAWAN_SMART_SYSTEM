@@ -346,6 +346,23 @@ function kpi(lab, val) {
   return '<div class="kpi"><div class="lab">' + lab + '</div><div class="val">' + val + '</div></div>';
 }
 
+function invoiceStatusSelect(id, current) {
+  const cur = String(current || 'issued');
+  return (
+    '<select class="status-select tag ' +
+    esc(cur) +
+    '" data-inv-status="' +
+    esc(id) +
+    '" aria-label="Invoice status">' +
+    (L.INVOICE_STATUSES || ['issued', 'partial', 'paid', 'credited', 'void'])
+      .map((s) => {
+        return '<option value="' + s + '"' + (s === cur ? ' selected' : '') + '>' + s + '</option>';
+      })
+      .join('') +
+    '</select>'
+  );
+}
+
 /* ---------- Sales ---------- */
 function renderSales() {
   const rows = cache.invoices
@@ -363,11 +380,9 @@ function renderSales() {
         rm(i.total) +
         '</td><td class="num">' +
         rm(i.balance) +
-        '</td><td><span class="tag ' +
-        esc(i.status) +
-        '">' +
-        esc(i.status) +
-        '</span></td><td class="actions">' +
+        '</td><td>' +
+        invoiceStatusSelect(i.id, i.status) +
+        '</td><td class="actions">' +
         (i.status !== 'void'
           ? '<button class="btn ghost" data-edit-inv="' +
             esc(i.id) +
@@ -405,6 +420,11 @@ function renderSales() {
     '<div><label>Subtotal (RM)</label><input type="number" step="0.01" name="subtotal" value="0"></div>' +
     '<div><label>SST (RM)</label><input type="number" step="0.01" name="sst" value="0"></div>' +
     '<div><label>Total (RM)</label><input type="number" step="0.01" name="total" value="0"></div>' +
+    '<div><label>Status</label><select name="status">' +
+    (L.INVOICE_STATUSES || [])
+      .map((s) => '<option value="' + s + '"' + (s === 'issued' ? ' selected' : '') + '>' + s + '</option>')
+      .join('') +
+    '</select></div>' +
     '<div class="span-2"><label>Memo</label><input type="text" name="memo"></div>' +
     '</form><div class="btn-row"><button class="btn" id="invSaveBtn">Save invoice</button>' +
     '<button class="btn ghost" id="invNewBtn">New</button></div></div>' +
@@ -445,6 +465,7 @@ function renderSales() {
     setForm(form, 'subtotal', inv ? inv.subtotal : 0);
     setForm(form, 'sst', inv ? inv.sst : 0);
     setForm(form, 'total', inv ? inv.total : 0);
+    setForm(form, 'status', inv ? inv.status || 'issued' : 'issued');
     setForm(form, 'memo', inv ? inv.memo : '');
     $('invFormTitle').textContent = inv ? 'Edit invoice' : 'Add / edit invoice';
     $('invSaveBtn').textContent = inv ? 'Save changes' : 'Save invoice';
@@ -469,11 +490,19 @@ function renderSales() {
       subtotal: formVal(form, 'subtotal'),
       sst: formVal(form, 'sst'),
       total: formVal(form, 'total'),
+      status: formVal(form, 'status'),
       memo: formVal(form, 'memo'),
     };
     try {
-      if (payload.id) await L.updateInvoice(payload);
-      else await L.recordManualInvoice(payload);
+      if (payload.id) {
+        await L.updateInvoice(payload);
+        if (payload.status) await L.setInvoiceStatus(payload.id, payload.status);
+      } else {
+        const row = await L.recordManualInvoice(payload);
+        if (payload.status && payload.status !== 'issued' && row && row.id) {
+          await L.setInvoiceStatus(row.id, payload.status);
+        }
+      }
       status(payload.id ? 'Invoice updated.' : 'Invoice saved.');
       await reload();
     } catch (e) {
@@ -485,6 +514,17 @@ function renderSales() {
     btn.addEventListener('click', () => {
       fillInvoice(cache.invoices.find((i) => i.id === btn.getAttribute('data-edit-inv')));
       $('invForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  $('viewRoot').querySelectorAll('[data-inv-status]').forEach((sel) => {
+    sel.addEventListener('change', async () => {
+      try {
+        await L.setInvoiceStatus(sel.getAttribute('data-inv-status'), sel.value);
+        status('Status set to ' + sel.value + '.');
+        await reload();
+      } catch (e) {
+        status(e.message || 'Could not change status.');
+      }
     });
   });
 

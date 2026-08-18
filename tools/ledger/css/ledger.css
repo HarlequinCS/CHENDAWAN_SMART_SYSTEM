@@ -206,11 +206,39 @@
   color: #1b6b3a;
 }
 
-.tag.partial,
-.tag.unpaid,
-.tag.issued {
+.tag.credited,
+.tag.void {
+  background: #eceff1;
+  color: #546e7a;
+}
+
+.status-select {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--ink);
+  cursor: pointer;
+  max-width: 120px;
+}
+
+.status-select.paid {
+  background: #e7f4ea;
+  color: #1b6b3a;
+  border-color: #cde6d4;
+}
+
+.status-select.issued,
+.status-select.partial,
+.status-select.unpaid {
   background: #fff4e5;
   color: #8a5a12;
+  border-color: #f0ddb8;
 }
 
 .check-row {

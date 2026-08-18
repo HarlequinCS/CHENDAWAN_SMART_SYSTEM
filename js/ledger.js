@@ -795,9 +795,12 @@ window.TCVLedger = (function () {
       });
     }
     const balance = money(total - paid);
-    let statusVal = 'issued';
-    if (balance <= 0) statusVal = 'paid';
-    else if (paid > 0) statusVal = 'partial';
+    let statusVal = String(data.status || '').trim().toLowerCase();
+    if (INVOICE_STATUSES.indexOf(statusVal) === -1) {
+      statusVal = 'issued';
+      if (balance <= 0) statusVal = 'paid';
+      else if (paid > 0) statusVal = 'partial';
+    }
     await ref.set(
       {
         number,
@@ -817,6 +820,28 @@ window.TCVLedger = (function () {
       { merge: true }
     );
     return data.id;
+  }
+
+  const INVOICE_STATUSES = ['issued', 'partial', 'paid', 'credited', 'void'];
+
+  async function setInvoiceStatus(id, status, opts) {
+    await ensureSeeded();
+    const wanted = String(status || '').trim().toLowerCase();
+    if (INVOICE_STATUSES.indexOf(wanted) === -1) {
+      throw new Error('Choose issued, partial, paid, credited, or void.');
+    }
+    const ref = db().collection('invoices').doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('Invoice not found.');
+    const inv = snap.data() || {};
+    const total = money(inv.total);
+    const patch = { status: wanted, updatedAt: now() };
+    if (!(opts && opts.keepAmounts)) {
+      if (wanted === 'paid' || wanted === 'credited' || wanted === 'void') patch.balance = 0;
+      else if (wanted === 'issued') patch.balance = total;
+    }
+    await ref.set(patch, { merge: true });
+    return id;
   }
 
   async function findInvoiceByNumber(number) {
@@ -1599,6 +1624,8 @@ window.TCVLedger = (function () {
     onDocumentCommitted,
     recordManualInvoice,
     updateInvoice,
+    setInvoiceStatus,
+    INVOICE_STATUSES,
     recordBill,
     updateBill,
     payBill,
