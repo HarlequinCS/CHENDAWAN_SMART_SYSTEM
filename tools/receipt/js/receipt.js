@@ -228,6 +228,7 @@ function defaultState() {
 
 let numbering;
 let issueGate;
+let issuedLog;
 
 document.addEventListener('DOMContentLoaded', () => {
   const start = window.TCVFirebase && window.TCVFirebase.afterAuth
@@ -238,6 +239,10 @@ document.addEventListener('DOMContentLoaded', () => {
       issueGate = D.createIssueGate({
         onReset: () => {
           if (numbering) numbering.lockIssued(false);
+          if (issuedLog) issuedLog.clear();
+        },
+        onIssued: () => {
+          if (numbering) numbering.lockIssued(true);
         },
       });
       D.bindLivePreview(renderPreview);
@@ -328,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           if (decision.cancelled) return;
           if (!decision.reused && window.TCVProjects) await window.TCVProjects.refresh();
+          if (issuedLog) await issuedLog.afterSave(decision);
           renderPreview();
         } catch (e) {
           D.setStatus(e.message || 'Could not save document.');
@@ -335,6 +341,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const no = document.getElementById('receiptNo').value.trim() || 'receipt';
         D.downloadPdf('receipt-sheet', D.safeFilename('Receipt', no));
+      });
+      issuedLog = D.bindIssuedLog({
+        types: [window.TCVNumbers.PREFIX.receipt],
+        applyState: applyState,
+        numbering: numbering,
+        issueGate: issueGate,
+        noId: 'receiptNo',
+        fingerprint: collectState,
+        noneLabel: 'None issued on this job yet',
       });
       return D.loadIssuedIfPresent({
         prefix: window.TCVNumbers.PREFIX.receipt,
@@ -347,6 +362,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!doc) {
           applyState(defaultState());
           numbering.refresh();
+        }
+        if (issuedLog) {
+          issuedLog.refresh();
+          if (doc) issuedLog.showDoc(doc);
         }
       });
     })

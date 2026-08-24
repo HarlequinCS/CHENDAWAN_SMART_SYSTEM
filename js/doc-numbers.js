@@ -184,7 +184,7 @@ window.TCVNumbers = (function () {
     function refresh() {
       if (issuedLock) {
         if (hintEl && noEl && noEl.value) {
-          hintEl.textContent = 'Issued ' + noEl.value + ' — re-download does not create a new number.';
+          hintEl.textContent = 'Issued ' + noEl.value + ' — saving keeps this number and logs a revision.';
         }
         if (typeof opts.onChange === 'function') opts.onChange();
         return;

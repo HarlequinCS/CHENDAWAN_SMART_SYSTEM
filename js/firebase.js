@@ -169,22 +169,46 @@ window.TCVFirebase = (function () {
       });
       return { number, issue, id: docRef.id, year: p.year, jobNo: p.jobNo, serviceCode: p.serviceCode };
     });
-    if (window.TCVLedger && typeof window.TCVLedger.onDocumentCommitted === 'function') {
-      await window.TCVLedger.onDocumentCommitted({
-        type: prefix,
-        documentId: result.id,
-        number: result.number,
-        projectId,
-        clientId: clientId || '',
-        workerId,
-        payload,
-      });
-    }
     const issueEl = document.getElementById('issueNo');
     const noEl = document.getElementById(opts.noId);
     if (issueEl) issueEl.value = String(result.issue);
     if (noEl) noEl.value = result.number;
     return result;
+  }
+
+  async function updateIssuedDocument(opts) {
+    const id = opts && opts.id;
+    if (!id) throw new Error('No issued document to update.');
+    const payload = typeof opts.collectState === 'function' ? opts.collectState() : {};
+    const clientId = val('clientId') || '';
+    const workerId = val('workerId') || '';
+    const note = String((opts && opts.note) || '').trim();
+    const user = currentUser();
+    const ref = getDb().collection('documents').doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('Document not found.');
+    const prev = snap.data() || {};
+    const edits = Array.isArray(prev.edits) ? prev.edits.slice() : [];
+    edits.push({
+      at: isoNow(),
+      by: (user && (user.email || user.uid)) || '',
+      note,
+    });
+    const patch = {
+      payload,
+      clientId: clientId || prev.clientId || '',
+      workerId: workerId || prev.workerId || '',
+      updatedAt: isoNow(),
+      edits,
+    };
+    await ref.set(patch, { merge: true });
+    return {
+      id,
+      number: prev.number,
+      issue: prev.issue,
+      type: prev.type,
+      updated: true,
+    };
   }
 
   async function getDocument(id) {
@@ -242,6 +266,7 @@ window.TCVFirebase = (function () {
     nextJobNo,
     peekNextJobNo,
     commitDocument,
+    updateIssuedDocument,
     getDocument,
     listDocumentsByClient,
     isoNow,

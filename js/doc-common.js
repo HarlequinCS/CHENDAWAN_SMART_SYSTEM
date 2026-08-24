@@ -71,6 +71,42 @@ window.TCVDoc = (function () {
     });
   }
 
+  function asMetaGrid(node) {
+    asTable(node, '14px 0', 'top');
+    const bill = node.querySelector('.bill-to');
+    const meta = node.querySelector('.meta-right');
+    if (bill) bill.style.width = '52%';
+    if (meta) meta.style.width = '48%';
+  }
+
+  function asMetaRow(node) {
+    if (!node) return;
+    node.style.display = 'table';
+    node.style.width = '100%';
+    node.style.tableLayout = 'auto';
+    node.style.borderCollapse = 'separate';
+    node.style.borderSpacing = '0';
+    const lab = node.querySelector('.lab');
+    const val = node.querySelector('.val');
+    if (lab) {
+      lab.style.display = 'table-cell';
+      lab.style.width = '1%';
+      lab.style.whiteSpace = 'nowrap';
+      lab.style.paddingRight = '10px';
+      lab.style.verticalAlign = 'baseline';
+      lab.style.fontSize = '11.5px';
+    }
+    if (val) {
+      val.style.display = 'table-cell';
+      val.style.width = '99%';
+      val.style.textAlign = 'right';
+      val.style.whiteSpace = 'nowrap';
+      val.style.fontSize = '11.5px';
+      val.style.verticalAlign = 'baseline';
+      val.style.overflow = 'visible';
+    }
+  }
+
   function pdfOptions(el, filename) {
     const widthPx = 794;
     const heightPx = Math.max(el.scrollHeight, el.offsetHeight, 1);
@@ -116,11 +152,12 @@ window.TCVDoc = (function () {
           sheet.style.height = 'auto';
           sheet.style.padding = capturePad;
           sheet.querySelectorAll('.doc-header').forEach((n) => asTable(n, '0', 'bottom'));
-          sheet.querySelectorAll('.meta-grid').forEach((n) => asTable(n, '14px 0', 'top'));
+          sheet.querySelectorAll('.meta-grid').forEach((n) => asMetaGrid(n));
           sheet.querySelectorAll('.doc-ref-card').forEach((n) => asTable(n, '18px 0', 'top'));
           sheet.querySelectorAll('.party-grid').forEach((n) => asTable(n, '14px 0', 'top'));
           sheet.querySelectorAll('.sig-grid').forEach((n) => asTable(n, '20px 0', 'top'));
-          sheet.querySelectorAll('.proj-line, .meta-right > div').forEach((n) => asTable(n, '0', 'baseline'));
+          sheet.querySelectorAll('.proj-line').forEach((n) => asTable(n, '0', 'baseline'));
+          sheet.querySelectorAll('.meta-right > div').forEach((n) => asMetaRow(n));
           keepHeadingsWithContent(sheet);
         },
       },
@@ -369,18 +406,35 @@ window.TCVDoc = (function () {
   function createIssueGate(opts) {
     opts = opts || {};
     let last = null;
+    function setProjectLocked(on) {
+      const proj = document.getElementById('projectId');
+      if (proj) proj.disabled = !!on;
+    }
+    function syncDownloadBtn() {
+      const btn = document.getElementById('downloadBtn');
+      if (!btn) return;
+      btn.textContent = last && last.id ? 'Save & download PDF' : 'Download PDF';
+    }
     function unlockIssued() {
+      setProjectLocked(false);
       if (window.TCVProjects && window.TCVProjects.lockIssued) window.TCVProjects.lockIssued(false);
       if (typeof opts.onReset === 'function') opts.onReset();
     }
     function reset() {
       last = null;
       unlockIssued();
+      syncDownloadBtn();
       const url = new URL(window.location.href);
       if (url.searchParams.has('doc')) {
         url.searchParams.delete('doc');
         window.history.replaceState({}, '', url.pathname + url.search + url.hash);
       }
+    }
+    function lockCurrent() {
+      setProjectLocked(true);
+      if (window.TCVProjects && window.TCVProjects.lockIssued) window.TCVProjects.lockIssued(true);
+      if (typeof opts.onIssued === 'function') opts.onIssued();
+      syncDownloadBtn();
     }
     function prime(value, number, id) {
       last = {
@@ -388,11 +442,24 @@ window.TCVDoc = (function () {
         number: number,
         id: id,
       };
+      lockCurrent();
     }
-    ['projectId', 'clientId', 'workerId'].forEach((id) => {
+    ['projectId', 'workerId'].forEach((id) => {
       const el = document.getElementById(id);
-      if (el) el.addEventListener('change', reset);
+      if (el) {
+        el.addEventListener('change', () => {
+          if (last && last.id) return;
+          reset();
+        });
+      }
     });
+    const clientEl = document.getElementById('clientId');
+    if (clientEl) {
+      clientEl.addEventListener('change', () => {
+        if (last && last.id) return;
+        reset();
+      });
+    }
     async function beforeDownload(downloadOpts) {
       const raw =
         typeof downloadOpts.fingerprint === 'function'
@@ -400,13 +467,35 @@ window.TCVDoc = (function () {
           : downloadOpts.fingerprint;
       const fp = issueFingerprint(raw);
       if (last && last.fp === fp) {
-        setStatus('Re-downloading ' + last.number + ' — already issued, books unchanged.');
+        setStatus('Re-downloading ' + last.number + ' — already saved.');
         return { reused: true, number: last.number, id: last.id };
       }
-      if (last && last.fp !== fp) {
-        if (!confirm('This will issue a new number and post the books again. Continue?')) {
+      if (last && last.id) {
+        if (
+          !confirm(
+            'Save changes to ' + last.number + '? The number stays the same and a revision is logged.'
+          )
+        ) {
           return { cancelled: true };
         }
+        const noteEl = document.getElementById('revisionNote');
+        if (!window.TCVFirebase || typeof window.TCVFirebase.updateIssuedDocument !== 'function') {
+          throw new Error('Could not save edits.');
+        }
+        const result = await window.TCVFirebase.updateIssuedDocument({
+          id: last.id,
+          collectState: downloadOpts.fingerprint,
+          note: noteEl ? noteEl.value.trim() : '',
+        });
+        last = {
+          fp: fp,
+          number: result && result.number,
+          id: result && result.id,
+        };
+        if (noteEl) noteEl.value = '';
+        lockCurrent();
+        setStatus('Saved edits to ' + (result && result.number ? result.number : 'document') + '.');
+        return { reused: false, updated: true, result: result };
       }
       const result = await downloadOpts.commit();
       last = {
@@ -414,9 +503,10 @@ window.TCVDoc = (function () {
         number: result && result.number,
         id: result && result.id,
       };
+      lockCurrent();
       return { reused: false, result: result };
     }
-    return { beforeDownload, reset, prime };
+    return { beforeDownload, reset, prime, getLast: function () { return last; } };
   }
 
   async function loadIssuedIfPresent(opts) {
@@ -454,7 +544,7 @@ window.TCVDoc = (function () {
       opts.issueGate.prime(fpSrc, doc.number, doc.id);
     }
     if (opts.numbering && opts.numbering.refresh) opts.numbering.refresh();
-    setStatus('Opened ' + (doc.number || 'issued document') + ' — re-download will not post again.');
+    setStatus('Opened ' + (doc.number || 'issued document') + ' — save keeps this number and logs a revision.');
     if (typeof opts.onAfterApply === 'function') opts.onAfterApply(doc);
     return doc;
   }
@@ -566,6 +656,127 @@ window.TCVDoc = (function () {
       }
     }
     return rows;
+  }
+
+  function escText(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    const day = formatDate(d.toISOString().slice(0, 10));
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return day ? day + ' · ' + time : time;
+  }
+
+  function bindIssuedLog(opts) {
+    opts = opts || {};
+    const selectId = opts.selectId || 'issuedLog';
+    const historyId = opts.historyId || 'editHistory';
+    const sel = document.getElementById(selectId);
+    const openBtn = document.getElementById(opts.openBtnId || 'openIssuedBtn');
+    if (!sel) return null;
+
+    function types() {
+      return typeof opts.types === 'function' ? opts.types() : opts.types || [];
+    }
+
+    function showDoc(doc) {
+      const box = document.getElementById(historyId);
+      if (!box) return;
+      if (!doc) {
+        box.hidden = true;
+        box.innerHTML = '';
+        return;
+      }
+      const lines = [];
+      lines.push('Issued ' + (formatDateTime(doc.issuedAt) || '—'));
+      (doc.edits || []).forEach((e) => {
+        let line = 'Edited ' + (formatDateTime(e.at) || '—');
+        if (e.by) line += ' · ' + e.by;
+        if (e.note) line += ' — ' + e.note;
+        lines.push(line);
+      });
+      box.hidden = false;
+      box.innerHTML = lines.map((t) => '<div>' + escText(t) + '</div>').join('');
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].getAttribute('data-id') === doc.id) {
+          sel.selectedIndex = i;
+          break;
+        }
+      }
+    }
+
+    async function refresh() {
+      await fillIssuedSelect({
+        selectId,
+        types: types(),
+        emptyLabel: opts.emptyLabel || 'Select an issued document…',
+        needProjectLabel: 'Select a project first',
+        noneLabel: opts.noneLabel || 'None issued on this job yet',
+      });
+      const last = opts.issueGate && opts.issueGate.getLast && opts.issueGate.getLast();
+      if (last && last.id) {
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].getAttribute('data-id') === last.id) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    async function openSelected() {
+      const id = selectedIssuedId(selectId);
+      if (!id) {
+        setStatus('Pick a document from the issued log.');
+        return null;
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set('doc', id);
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+      const doc = await loadIssuedIfPresent({
+        allowTypes: opts.allowTypes || types(),
+        prefix: opts.prefix,
+        applyState: opts.applyState,
+        numbering: opts.numbering,
+        issueGate: opts.issueGate,
+        noId: opts.noId,
+        fingerprint: opts.fingerprint,
+        onBeforeApply: opts.onBeforeApply,
+        onAfterApply: opts.onAfterApply,
+      });
+      showDoc(doc);
+      return doc;
+    }
+
+    async function afterSave(decision) {
+      await refresh();
+      const id =
+        (decision && decision.result && decision.result.id) ||
+        (decision && decision.id) ||
+        (opts.issueGate && opts.issueGate.getLast && opts.issueGate.getLast() && opts.issueGate.getLast().id);
+      if (!id || !window.TCVFirebase || !window.TCVFirebase.getDocument) return;
+      try {
+        const doc = await window.TCVFirebase.getDocument(id);
+        showDoc(doc);
+      } catch (e) {}
+    }
+
+    function clear() {
+      showDoc(null);
+      sel.value = '';
+    }
+
+    if (openBtn) openBtn.addEventListener('click', () => openSelected());
+    const projectEl = document.getElementById('projectId');
+    if (projectEl) projectEl.addEventListener('change', () => refresh());
+    refresh();
+    return { refresh, showDoc, afterSave, clear, openSelected };
   }
 
   function bindDraftActions(opts) {
@@ -699,6 +910,7 @@ window.TCVDoc = (function () {
     downloadBlob,
     fillIssuedSelect,
     selectedIssuedId,
+    bindIssuedLog,
     amountInWords,
   };
 })();

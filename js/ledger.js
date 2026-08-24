@@ -943,8 +943,38 @@ window.TCVLedger = (function () {
     return Object.assign({}, snap.docs[0].data(), { id: snap.docs[0].id });
   }
 
+  function arAppliedFromLines(lines) {
+    return money(
+      (lines || []).reduce((s, l) => {
+        if (String(l.accountCode || '') !== CODES.AR) return s;
+        return s + money(l.credit) - money(l.debit);
+      }, 0)
+    );
+  }
+
+  function invoiceNoFromArLines(lines) {
+    const ar = (lines || []).find(
+      (l) => String(l.accountCode || '') === CODES.AR && money(l.credit)
+    );
+    return ar ? String(ar.memo || '').trim() : '';
+  }
+
+  async function setInvoiceBalance(inv, balance) {
+    const bal = Math.max(0, money(balance));
+    let status = 'issued';
+    if (bal <= 0) status = 'paid';
+    else if (bal < money(inv.total)) status = 'partial';
+    await db().collection('invoices').doc(inv.id).set(
+      { balance: bal, status, updatedAt: now() },
+      { merge: true }
+    );
+    return bal;
+  }
+
   async function applyReceipt(opts) {
     await ensureSeeded();
+    const existing = await findJournalBySource('RCP', opts.documentId);
+    if (existing && !existing.reversedBy) return existing.id;
     const fields = (opts.payload && opts.payload.fields) || {};
     const amount = money(fields.amount);
     if (amount <= 0) return '';
@@ -1072,6 +1102,156 @@ window.TCVLedger = (function () {
     if (type === 'CN') return postCreditNote(info);
     if (type === 'RCP') return applyReceipt(info);
     if (type === 'PSL') return postPayslip(info);
+  }
+
+  async function updateReceiptPosted(opts) {
+    await ensureSeeded();
+    const fields = (opts.payload && opts.payload.fields) || {};
+    const amount = money(fields.amount);
+    const existing = await findJournalBySource('RCP', opts.documentId);
+    if (!existing) {
+      if (amount <= 0) return '';
+      return applyReceipt(opts);
+    }
+    if (existing.reversedBy) {
+      throw new Error('This receipt was voided in the ledger and cannot be edited.');
+    }
+    if (amount <= 0) throw new Error('Receipt amount cannot be cleared after it was issued.');
+    const oldInvNo = invoiceNoFromArLines(existing.lines);
+    const oldApply = arAppliedFromLines(existing.lines);
+    const oldInv = oldInvNo ? await findInvoiceByNumber(oldInvNo) : null;
+    if (oldInv && oldApply) {
+      await setInvoiceBalance(oldInv, money(oldInv.balance) + oldApply);
+    }
+    const date = (fields.receiptDate || '').slice(0, 10) || existing.date || window.TCVNumbers.isoToday();
+    const bankCode = bankGlCode(fields.bankAccountId);
+    let inv = await findInvoiceByNumber(fields.refInvoice);
+    if (oldInv && inv && oldInv.id === inv.id) {
+      inv = Object.assign({}, inv, { balance: money(inv.balance) + oldApply });
+    }
+    const lines = [];
+    if (amount) lines.push(line(bankCode, amount, 0, opts.number));
+    if (inv) {
+      const applyAmt = money(Math.min(amount, inv.balance));
+      if (applyAmt) lines.push(line(CODES.AR, 0, applyAmt, inv.number));
+      const leftover = money(amount - applyAmt);
+      if (leftover) lines.push(line(CODES.OTHER_INCOME, 0, leftover, 'Unapplied ' + opts.number));
+      await updateJournal(existing.id, {
+        date,
+        memo: 'Receipt ' + (opts.number || '') + ' on ' + inv.number,
+        projectId: opts.projectId || inv.projectId,
+        clientId: opts.clientId || inv.clientId,
+        bankAccountId: fields.bankAccountId || '',
+        lines,
+      });
+      await setInvoiceBalance(inv, money(inv.balance) - applyAmt);
+      return existing.id;
+    }
+    if (amount) lines.push(line(CODES.OTHER_INCOME, 0, amount, 'Unapplied receipt'));
+    await updateJournal(existing.id, {
+      date,
+      memo: 'Receipt ' + (opts.number || '') + ' (no invoice)',
+      projectId: opts.projectId || '',
+      clientId: opts.clientId || '',
+      bankAccountId: fields.bankAccountId || '',
+      lines,
+    });
+    return existing.id;
+  }
+
+  async function updateCreditNotePosted(opts) {
+    await ensureSeeded();
+    const snap = await db().collection('creditNotes').doc(opts.documentId).get();
+    if (!snap.exists) return postCreditNote(opts);
+    const cn = Object.assign({}, snap.data(), { id: snap.id });
+    const t = invoiceTotalsFromPayload(opts.payload);
+    const fields = (opts.payload && opts.payload.fields) || {};
+    const against = String(fields.invQuote || fields.againstInv || '').trim();
+    if (against && cn.invoiceNumber && against !== cn.invoiceNumber) {
+      throw new Error(
+        'Credit notes keep the original invoice (' +
+          cn.invoiceNumber +
+          '). Issue a new credit note for a different invoice.'
+      );
+    }
+    const invSnap = await db().collection('invoices').doc(cn.invoiceId).get();
+    if (!invSnap.exists) throw new Error('Linked invoice was not found.');
+    const inv = Object.assign({}, invSnap.data(), { id: invSnap.id });
+    const remaining = money((inv.balance || 0) + (cn.total || 0));
+    if (t.total > remaining + 0.009) {
+      throw new Error(
+        'Credit of RM ' +
+          t.total.toFixed(2) +
+          ' exceeds remaining balance RM ' +
+          remaining.toFixed(2) +
+          ' on ' +
+          inv.number +
+          '.'
+      );
+    }
+    const date = (fields.invDate || '').slice(0, 10) || cn.date || window.TCVNumbers.isoToday();
+    const lines = [];
+    if (t.subtotal) lines.push(line(CODES.REVENUE, t.subtotal, 0, opts.number));
+    if (t.sst) lines.push(line(CODES.SST, t.sst, 0, opts.number));
+    if (t.total) lines.push(line(CODES.AR, 0, t.total, inv.number));
+    if (!lines.length) throw new Error('Credit note has no amount to post.');
+    if (cn.journalId) {
+      await updateJournal(cn.journalId, {
+        date,
+        memo: 'Credit note ' + (opts.number || '') + ' on ' + inv.number,
+        projectId: opts.projectId || inv.projectId,
+        clientId: opts.clientId || inv.clientId,
+        lines,
+      });
+    }
+    const newBal = money(remaining - t.total);
+    let status = 'issued';
+    if (newBal <= 0) status = 'credited';
+    else if (newBal < money(inv.total)) status = 'partial';
+    await db().collection('invoices').doc(inv.id).set(
+      { balance: Math.max(0, newBal), status, updatedAt: now() },
+      { merge: true }
+    );
+    await db().collection('creditNotes').doc(opts.documentId).set(
+      {
+        date,
+        subtotal: t.subtotal,
+        sstPct: t.sstPct,
+        sst: t.sst,
+        total: t.total,
+        updatedAt: now(),
+      },
+      { merge: true }
+    );
+    return opts.documentId;
+  }
+
+  async function onDocumentUpdated(info) {
+    await ensureSeeded();
+    const type = info.type;
+    if (type === 'INV') {
+      const existing = await db().collection('invoices').doc(info.documentId).get();
+      if (!existing.exists) return postInvoiceIssued(info);
+      const t = invoiceTotalsFromPayload(info.payload);
+      const fields = (info.payload && info.payload.fields) || {};
+      const date = (fields.invDate || '').slice(0, 10) || window.TCVNumbers.isoToday();
+      const dueRaw = fields.invDue || '';
+      const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(dueRaw) ? dueRaw : date;
+      return updateInvoice({
+        id: info.documentId,
+        number: info.number,
+        date,
+        dueDate,
+        clientId: info.clientId,
+        projectId: info.projectId,
+        subtotal: t.subtotal,
+        sst: t.sst,
+        total: t.total,
+        memo: 'Invoice issued ' + (info.number || ''),
+      });
+    }
+    if (type === 'CN') return updateCreditNotePosted(info);
+    if (type === 'RCP') return updateReceiptPosted(info);
   }
 
   async function recordBill(data) {
@@ -1727,6 +1907,7 @@ window.TCVLedger = (function () {
     listVendors,
     upsertVendor,
     onDocumentCommitted,
+    onDocumentUpdated,
     recordManualInvoice,
     updateInvoice,
     setInvoiceStatus,

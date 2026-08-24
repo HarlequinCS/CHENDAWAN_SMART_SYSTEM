@@ -4,7 +4,7 @@ const COMPANY = window.TCV_COMPANY || {};
 
 const VIEWS = {
   dashboard: { title: 'Dashboard', sub: 'Cash, receivables, payables, and this month’s result.' },
-  sales: { title: 'Sales (AR)', sub: 'Add or edit invoices here, or post from an Invoice PDF. Record collections against the balance.' },
+  sales: { title: 'Sales (AR)', sub: 'Add or edit invoices and collections here. Quotation, invoice, receipt, and payslip PDFs do not post to the books.' },
   purchases: { title: 'Purchases (AP)', sub: 'Supplier bills, contractor claims, and bill payments.' },
   pay: { title: 'Pay workforce', sub: 'Pay contractors and freelancers from Bank Islam. Employees with EPF/SOCSO still use the Payslip tool.' },
   expenses: { title: 'Expenses', sub: 'Paid-now costs. Drawings are not expenses — record those on Bank.' },

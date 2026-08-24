@@ -7,8 +7,8 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Invoice Generator · ChendAwan Tools</title>
-  <link rel="stylesheet" href="../../css/shared.css?v=20260816r2">
-  <link rel="stylesheet" href="../../css/doc-tool.css?v=20260816r2">
+  <link rel="stylesheet" href="../../css/shared.css?v=20260824r1">
+  <link rel="stylesheet" href="../../css/doc-tool.css?v=20260824r1">
   <link rel="stylesheet" href="css/invoice.css?v=20260816r2">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -93,6 +93,17 @@
     </fieldset>
 
     <fieldset>
+      <legend>Issued log</legend>
+      <label class="first" id="issuedLogLabel">Open an issued invoice to edit</label>
+      <select id="issuedLog"><option value="">Select a project first</option></select>
+      <button type="button" class="add-btn" id="openIssuedBtn" style="margin-top:10px;">Open to edit</button>
+      <p class="field-hint">Saving keeps the same number and writes a revision to this log. This does not change Smart Ledger figures — update the ledger yourself.</p>
+      <div id="editHistory" class="edit-history" hidden></div>
+      <label>Revision note</label>
+      <input type="text" id="revisionNote" placeholder="Optional — why you are changing this document">
+    </fieldset>
+
+    <fieldset>
       <legend>Project</legend>
       <label class="first">Project name</label>
       <input type="text" id="projName" placeholder="e.g. HRSB One Payroll Remediation Service">
@@ -153,7 +164,7 @@
         <button id="resetBtn">Reset form</button>
       </div>
       <div class="status-msg" id="statusMsg"></div>
-      <p class="hint">Drafts are saved on this device only. "Download PDF" renders the preview exactly as shown.</p>
+      <p class="hint">Drafts are saved on this device only. Issued invoices can be opened from the log and edited; saving keeps the same number. This does not change Smart Ledger figures.</p>
     </div>
   </div>
 
@@ -245,14 +256,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="../../js/firebase-config.js?v=20260816r2"></script>
-<script src="../../js/firebase.js?v=20260816r2"></script>
+<script src="../../js/firebase.js?v=20260824r2"></script>
 <script src="../../js/company-defaults.js?v=20260816r2"></script>
 <script src="../../js/service-codes.js?v=20260816r2"></script>
-<script src="../../js/doc-common.js?v=20260816r2"></script>
-<script src="../../js/doc-numbers.js?v=20260816r2"></script>
+<script src="../../js/doc-common.js?v=20260824r2"></script>
+<script src="../../js/doc-numbers.js?v=20260824r1"></script>
 <script src="../../js/clients.js?v=20260816r2"></script>
 <script src="../../js/projects.js?v=20260816r2"></script>
-<script src="../../js/ledger.js?v=20260816r2"></script>
-<script src="js/invoice.js?v=20260816r2"></script>
+<script src="../../js/ledger.js?v=20260824r1"></script>
+<script src="js/invoice.js?v=20260824r1"></script>
 </body>
 </html>
