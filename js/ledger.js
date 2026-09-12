@@ -1676,6 +1676,132 @@ window.TCVLedger = (function () {
     return id;
   }
 
+  function memoKey(s) {
+    return String(s || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+  }
+
+  function claimFingerprint(row) {
+    return [String(row.date || '').slice(0, 10), memoKey(row.memo), money(row.amount).toFixed(2)].join('|');
+  }
+
+  const PENDING_FROM_EXPENSES = [
+    { date: '2026-09-11', memo: 'Makan', amount: 38.4 },
+    { date: '2026-09-10', memo: 'Duit Minyak', amount: 50 },
+    { date: '2026-09-08', memo: 'Cursor', amount: 85 },
+    { date: '2026-09-07', memo: 'Tol and minyak', amount: 50 },
+    { date: '2026-09-04', memo: 'Minyak', amount: 50 },
+    { date: '2026-09-04', memo: 'Makan lunch', amount: 32.1 },
+    { date: '2026-09-03', memo: 'DigitalOceanServer', amount: 64.04 },
+    { date: '2026-09-03', memo: 'Lunch', amount: 25.8 },
+  ].map(claimFingerprint);
+
+  async function voidExpenseJournal(journalId, date) {
+    if (!journalId) return;
+    try {
+      await reverseJournal(journalId, date);
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (/already voided/i.test(msg)) return;
+      if (/locked/i.test(msg)) {
+        await reverseJournal(journalId, window.TCVNumbers.isoToday());
+        return;
+      }
+      throw e;
+    }
+  }
+
+  async function writePendingClaim(exp, expenseId, claims) {
+    let found = claims.find((row) => {
+      return row.expenseId === expenseId || (exp.claimId && row.id === exp.claimId) || claimFingerprint(row) === claimFingerprint(exp);
+    });
+    const actor = currentActor();
+    const fields = {
+      date: exp.date || '',
+      claimantName: exp.claimantName || (found && found.claimantName) || actor.name || actor.email || 'Not recorded',
+      accountCode: exp.accountCode || (found && found.accountCode) || CODES.MISC,
+      projectId: exp.projectId || (found && found.projectId) || '',
+      memo: exp.memo || '',
+      amount: money(exp.amount),
+      status: 'pending',
+      paidDate: '',
+      bankAccountId: '',
+      expenseId: '',
+      journalId: '',
+      updatedAt: now(),
+    };
+    if (found) {
+      await db().collection('claims').doc(found.id).set(fields, { merge: true });
+      Object.assign(found, fields);
+      return found.id;
+    }
+    const ref = db().collection('claims').doc();
+    const row = Object.assign({}, fields, {
+      claimNo: await nextClaimNo(fields.date),
+      submittedByUid: actor.uid,
+      submittedByEmail: actor.email,
+      submittedByName: actor.name || actor.email || 'Not recorded',
+      createdAt: exp.createdAt || now(),
+    });
+    await ref.set(row);
+    claims.push(Object.assign({ id: ref.id }, row));
+    return ref.id;
+  }
+
+  async function ensureClaimLinks() {
+    await ensureSeeded();
+    const want = {};
+    PENDING_FROM_EXPENSES.forEach((k) => {
+      want[k] = true;
+    });
+    const [expSnap, claimSnap] = await Promise.all([
+      db().collection('expenses').get(),
+      db().collection('claims').get(),
+    ]);
+    const claims = claimSnap.docs.map((d) => Object.assign({}, d.data(), { id: d.id }));
+    const seenExp = {};
+    for (let i = 0; i < expSnap.docs.length; i++) {
+      const doc = expSnap.docs[i];
+      const exp = Object.assign({}, doc.data(), { id: doc.id });
+      if (!want[claimFingerprint(exp)]) continue;
+      seenExp[doc.id] = true;
+      await writePendingClaim(exp, doc.id, claims);
+      await voidExpenseJournal(exp.journalId, exp.date);
+      await doc.ref.delete();
+    }
+    for (let i = 0; i < claims.length; i++) {
+      const row = claims[i];
+      if (!want[claimFingerprint(row)]) continue;
+      if (row.status === 'pending' && !row.expenseId && !row.journalId) continue;
+      await db()
+        .collection('claims')
+        .doc(row.id)
+        .set(
+          {
+            status: 'pending',
+            paidDate: '',
+            bankAccountId: '',
+            expenseId: '',
+            journalId: '',
+            updatedAt: now(),
+          },
+          { merge: true }
+        );
+      await voidExpenseJournal(row.journalId, row.paidDate || row.date);
+      if (row.expenseId && !seenExp[row.expenseId]) {
+        const expRef = db().collection('expenses').doc(row.expenseId);
+        const expSnap2 = await expRef.get();
+        if (expSnap2.exists) {
+          const exp = expSnap2.data() || {};
+          await voidExpenseJournal(exp.journalId || row.journalId, exp.date || row.date);
+          await expRef.delete();
+        }
+      }
+    }
+  }
+
   async function payWorker(data) {
     await ensureSeeded();
     const amount = money(data.amount);
@@ -2148,6 +2274,7 @@ window.TCVLedger = (function () {
     updateClaim,
     payClaim,
     deleteClaim,
+    ensureClaimLinks,
     pendingClaimsTotal,
     paidClaimsTotal,
     isPaidClaim,

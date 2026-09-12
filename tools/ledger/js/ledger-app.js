@@ -189,6 +189,7 @@ function workerOptions(selected, kinds) {
 
 async function refreshData() {
   await L.ensureSeeded();
+  if (L.ensureClaimLinks) await L.ensureClaimLinks();
   const [invoices, bills, billPayments, expenses, claims, journals, vendors, workerPayments] = await Promise.all([
     L.listInvoices(),
     L.listBills(),
@@ -1449,7 +1450,13 @@ function renderClaims() {
 
   function claimRowsHtml() {
     const filtered = (cache.claims || []).filter(claimMatches);
-    if (!filtered.length) return '<p class="muted">No claims match this filter.</p>';
+    if (!filtered.length) {
+      const total = (cache.claims || []).length;
+      if (!total) {
+        return '<p class="muted">No claims yet. Create one above. Existing paid items such as Toll and Duit Minyak stay on Expenses until this page has linked paid claims.</p>';
+      }
+      return '<p class="muted">No claims match this filter.</p>';
+    }
     return (
       '<table class="data-table"><thead><tr><th>Claim ID</th><th>Date</th><th>Claimed by</th><th>Category</th><th>Project</th><th>Description</th><th class="num">Amount</th><th>Status</th><th>Paid</th><th></th></tr></thead><tbody>' +
       filtered
