@@ -1752,6 +1752,7 @@ window.TCVLedger = (function () {
 
   async function ensureClaimLinks() {
     await ensureSeeded();
+    if (meta.claimPendingImport === 1) return;
     const want = {};
     PENDING_FROM_EXPENSES.forEach((k) => {
       want[k] = true;
@@ -1766,6 +1767,7 @@ window.TCVLedger = (function () {
       const doc = expSnap.docs[i];
       const exp = Object.assign({}, doc.data(), { id: doc.id });
       if (!want[claimFingerprint(exp)]) continue;
+      if (exp.claimId) continue;
       seenExp[doc.id] = true;
       await writePendingClaim(exp, doc.id, claims);
       await voidExpenseJournal(exp.journalId, exp.date);
@@ -1774,6 +1776,7 @@ window.TCVLedger = (function () {
     for (let i = 0; i < claims.length; i++) {
       const row = claims[i];
       if (!want[claimFingerprint(row)]) continue;
+      if (isPaidClaim(row)) continue;
       if (row.status === 'pending' && !row.expenseId && !row.journalId) continue;
       await db()
         .collection('claims')
@@ -1795,11 +1798,13 @@ window.TCVLedger = (function () {
         const expSnap2 = await expRef.get();
         if (expSnap2.exists) {
           const exp = expSnap2.data() || {};
+          if (exp.claimId) continue;
           await voidExpenseJournal(exp.journalId || row.journalId, exp.date || row.date);
           await expRef.delete();
         }
       }
     }
+    await saveMeta({ claimPendingImport: 1 });
   }
 
   async function payWorker(data) {
