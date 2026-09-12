@@ -4,10 +4,18 @@ const COMPANY = window.TCV_COMPANY || {};
 
 const VIEWS = {
   dashboard: { title: 'Dashboard', sub: 'Cash, receivables, payables, and this month’s result.' },
+  overview: {
+    title: 'Project overview',
+    sub: 'Cash in, cash out, and pending claims for one project. Unpaid claims are not treated as money already spent.',
+  },
   sales: { title: 'Sales (AR)', sub: 'Add or edit invoices and collections here. Quotation, invoice, receipt, and payslip PDFs do not post to the books.' },
   purchases: { title: 'Purchases (AP)', sub: 'Supplier bills, contractor claims, and bill payments.' },
   pay: { title: 'Pay workforce', sub: 'Pay contractors and freelancers from Bank Islam. Employees with EPF/SOCSO still use the Payslip tool.' },
-  expenses: { title: 'Expenses', sub: 'Paid-now costs. Drawings are not expenses — record those on Bank.' },
+  claims: {
+    title: 'Claims',
+    sub: 'Submit a reimbursement first. It is not an expense until you mark it paid.',
+  },
+  expenses: { title: 'Expenses', sub: 'Paid costs only (historical payments and paid claims). Drawings go on Bank.' },
   bank: { title: 'Bank & park', sub: 'Operating bank, investment account, park/withdraw, drawings, and a simple reconcile.' },
   journal: { title: 'Journal', sub: 'Edit an unlocked journal, or post a manual one. Void creates a reversing entry.' },
   reports: { title: 'Reports', sub: 'Print or download A4 packs for the books and LHDN Form B.' },
@@ -17,7 +25,9 @@ const VIEWS = {
 let cache = {
   invoices: [],
   bills: [],
+  billPayments: [],
   expenses: [],
+  claims: [],
   journals: [],
   vendors: [],
   workerPayments: [],
@@ -179,20 +189,34 @@ function workerOptions(selected, kinds) {
 
 async function refreshData() {
   await L.ensureSeeded();
-  const [invoices, bills, expenses, journals, vendors, workerPayments] = await Promise.all([
+  const [invoices, bills, billPayments, expenses, claims, journals, vendors, workerPayments] = await Promise.all([
     L.listInvoices(),
     L.listBills(),
+    L.listBillPayments(),
     L.listExpenses(),
+    L.listClaims(),
     L.listJournals(),
     L.listVendors(),
     L.listWorkerPayments(),
   ]);
-  cache = { invoices, bills, expenses, journals, vendors, workerPayments };
+  cache = { invoices, bills, billPayments, expenses, claims, journals, vendors, workerPayments };
+}
+
+function hashView() {
+  const raw = (location.hash || '#dashboard').replace(/^#/, '');
+  return (raw.split('?')[0] || 'dashboard').split('/')[0];
+}
+
+function hashQuery() {
+  const raw = (location.hash || '').replace(/^#/, '');
+  const i = raw.indexOf('?');
+  if (i < 0) return new URLSearchParams();
+  return new URLSearchParams(raw.slice(i + 1));
 }
 
 function currentView() {
-  const hash = (location.hash || '#dashboard').replace('#', '');
-  return VIEWS[hash] ? hash : 'dashboard';
+  const view = hashView();
+  return VIEWS[view] ? view : 'dashboard';
 }
 
 function setNav(view) {
@@ -233,8 +257,28 @@ function clientOptions(selected) {
 
 let pendingJournalId = '';
 
-function expenseCodes() {
-  return accountOptions('6090', (a) => a.type === 'expense');
+function expenseCodes(selected) {
+  return accountOptions(selected || '6090', (a) => a.type === 'expense');
+}
+
+function defaultClaimant() {
+  const u = window.TCVFirebase.currentUser && window.TCVFirebase.currentUser();
+  return (u && (u.displayName || u.email)) || '';
+}
+
+function claimNoForExpense(e) {
+  if (!e || !e.claimId) return '';
+  const c = (cache.claims || []).find((x) => x.id === e.claimId);
+  return c ? c.claimNo : 'Claim';
+}
+
+function journalExpenseNet(journals, opts) {
+  const bals = L.balancesFromJournals(journals, opts);
+  let expense = 0;
+  Object.keys(bals).forEach((code) => {
+    if (bals[code].account && bals[code].account.type === 'expense') expense += bals[code].net;
+  });
+  return L.money(expense);
 }
 
 /* ---------- Dashboard ---------- */
@@ -255,6 +299,9 @@ function renderDashboard() {
     if (row.account.type === 'income') income += row.net;
     if (row.account.type === 'expense') expense += row.net;
   });
+  const pendingClaims = L.pendingClaimsTotal(cache.claims);
+  const monthExpense = journalExpenseNet(cache.journals, { from: month + '-01', to: month + '-31' });
+  const pendingRows = (cache.claims || []).filter((c) => !L.isPaidClaim(c));
   const unpaid = cache.invoices.filter((i) => i.status !== 'paid' && i.status !== 'void');
   const aging = { current: 0, d30: 0, d60: 0, d90: 0 };
   unpaid.forEach((i) => {
@@ -300,6 +347,8 @@ function renderDashboard() {
     kpi('Invested / parked', rm(cash.invested)) +
     kpi('AR outstanding', rm(ar)) +
     kpi('AP outstanding', rm(ap)) +
+    kpi('This month expenses', rm(monthExpense)) +
+    kpi('Pending claims', rm(pendingClaims)) +
     kpi('This month P&amp;L', rm(income - expense)) +
     '</div>' +
     '<div class="panel"><h2>Where the money sits</h2>' +
@@ -308,7 +357,30 @@ function renderDashboard() {
     '<tr><td><strong>Total liquid</strong></td><td></td><td class="num"><strong>' +
     rm(cash.total) +
     '</strong></td></tr></tbody></table>' +
-    '<p class="muted">Park funds from Bank &amp; park. Moving money to the investment account is not an expense.</p></div>' +
+    '<p class="muted">Park funds from Bank &amp; park. Moving money to the investment account is not an expense. Pending claims are not included in expenses or P&amp;L until paid.</p></div>' +
+    '<div class="panel"><h2>Pending claims</h2>' +
+    (pendingRows.length
+      ? '<table class="data-table"><thead><tr><th>Claim</th><th>Date</th><th>Claimed by</th><th>Memo</th><th class="num">Amount</th></tr></thead><tbody>' +
+        pendingRows
+          .map((c) => {
+            return (
+              '<tr><td>' +
+              esc(c.claimNo || c.id) +
+              '</td><td>' +
+              esc(c.date || '') +
+              '</td><td>' +
+              esc(c.claimantName || c.submittedByName || '—') +
+              '</td><td>' +
+              esc(c.memo || '') +
+              '</td><td class="num">' +
+              rm(c.amount) +
+              '</td></tr>'
+            );
+          })
+          .join('') +
+        '</tbody></table>'
+      : '<p class="muted">No unpaid claims. New reimbursements go on <a href="#claims">Claims</a>.</p>') +
+    '</div>' +
     '<div class="panel"><h2>Unpaid invoices aging</h2>' +
     '<table class="data-table"><thead><tr><th>Current (0–30)</th><th>31–60</th><th>61–90</th><th>90+</th></tr></thead>' +
     '<tbody><tr><td>' +
@@ -326,9 +398,11 @@ function renderDashboard() {
         projRows
           .map((r) => {
             return (
-              '<tr><td>' +
+              '<tr><td><a href="#overview?p=' +
+              encodeURIComponent(r.p.id) +
+              '">' +
               esc(r.p.name) +
-              '</td><td class="num">' +
+              '</a></td><td class="num">' +
               rm(r.billed) +
               '</td><td class="num">' +
               rm(r.collected) +
@@ -345,8 +419,466 @@ function renderDashboard() {
     '</div>';
 }
 
-function kpi(lab, val) {
-  return '<div class="kpi"><div class="lab">' + lab + '</div><div class="val">' + val + '</div></div>';
+function kpi(lab, val, valClass) {
+  return (
+    '<div class="kpi"><div class="lab">' +
+    lab +
+    '</div><div class="val' +
+    (valClass ? ' ' + valClass : '') +
+    '">' +
+    val +
+    '</div></div>'
+  );
+}
+
+function bankGlSet() {
+  const set = { 1000: true, 1010: true };
+  L.listBankAccounts().forEach((b) => {
+    if (b.glCode) set[b.glCode] = true;
+  });
+  return set;
+}
+
+function accountLabel(code) {
+  const acc = L.accountByCode(code);
+  return acc ? acc.name : code || '—';
+}
+
+function statusTag(status) {
+  const s = String(status || 'pending').toLowerCase();
+  const cls = s === 'paid' ? 'paid' : s === 'partial' ? 'partial' : 'unpaid';
+  const label = s === 'paid' ? 'Paid' : s === 'partial' ? 'Partial' : 'Pending';
+  return '<span class="tag ' + cls + '">' + label + '</span>';
+}
+
+function ovBar(label, amount, max, kind) {
+  const w = max > 0 ? Math.min(100, (Math.abs(amount) / max) * 100) : 0;
+  return (
+    '<div class="ov-bar-row"><span>' +
+    esc(label) +
+    '</span><div class="ov-bar-track"><div class="ov-bar-fill' +
+    (kind === 'out' ? ' out' : '') +
+    '" style="width:' +
+    w.toFixed(1) +
+    '%"></div></div><span class="num">' +
+    rm(amount) +
+    '</span></div>'
+  );
+}
+
+function selectedOverviewProjectId() {
+  const q = hashQuery();
+  const fromHash = q.get('p') || q.get('project') || '';
+  if (fromHash) return fromHash;
+  try {
+    return sessionStorage.getItem('tcvLedgerOverviewProject') || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function lastInvoiceCollectDate(inv) {
+  let last = '';
+  (cache.journals || []).forEach((j) => {
+    if (!L.isLiveJournal(j)) return;
+    if (j.sourceType !== 'RCP' && j.sourceType !== 'ARPAY') return;
+    if (inv.projectId && j.projectId && j.projectId !== inv.projectId) return;
+    const hit = (j.lines || []).some((l) => {
+      return l.accountCode === '1100' && L.money(l.credit) && String(l.memo || '').indexOf(inv.number) !== -1;
+    });
+    if (hit && String(j.date || '') > last) last = j.date;
+  });
+  return last;
+}
+
+function lastBillPayDate(billId) {
+  let last = '';
+  (cache.billPayments || []).forEach((p) => {
+    if (p.billId !== billId) return;
+    if (String(p.date || '') > last) last = p.date;
+  });
+  return last;
+}
+
+function buildProjectOverview(projectId) {
+  const banks = bankGlSet();
+  const skipCash = { XFER: true, OPEN: true, DRAW: true };
+  let moneyIn = 0;
+  let moneyOut = 0;
+  const byMonth = {};
+  const catOut = {};
+
+  (cache.journals || []).forEach((j) => {
+    if (j.projectId !== projectId || !L.isLiveJournal(j)) return;
+    if (skipCash[j.sourceType]) return;
+    let inAmt = 0;
+    let outAmt = 0;
+    let expName = '';
+    (j.lines || []).forEach((l) => {
+      if (banks[l.accountCode]) {
+        inAmt += L.money(l.debit);
+        outAmt += L.money(l.credit);
+      }
+      const acc = L.accountByCode(l.accountCode);
+      if (acc && acc.type === 'expense' && L.money(l.debit) > L.money(l.credit)) expName = acc.name;
+    });
+    moneyIn += inAmt;
+    moneyOut += outAmt;
+    if (inAmt || outAmt) {
+      const m = String(j.date || '').slice(0, 7);
+      if (m) {
+        if (!byMonth[m]) byMonth[m] = { inn: 0, out: 0 };
+        byMonth[m].inn += inAmt;
+        byMonth[m].out += outAmt;
+      }
+    }
+    if (outAmt) {
+      let cat = expName;
+      if (!cat && j.sourceType === 'BILLPAY') {
+        const pay = (cache.billPayments || []).find((p) => p.id === j.sourceId);
+        const bill = pay ? (cache.bills || []).find((b) => b.id === pay.billId) : null;
+        cat = bill ? accountLabel(bill.accountCode) : 'Bill payment';
+      }
+      if (!cat) cat = 'Other';
+      catOut[cat] = L.money((catOut[cat] || 0) + outAmt);
+    }
+  });
+
+  moneyIn = L.money(moneyIn);
+  moneyOut = L.money(moneyOut);
+  const net = L.money(moneyIn - moneyOut);
+
+  const invoices = (cache.invoices || []).filter((i) => i.projectId === projectId && i.status !== 'void');
+  const billed = invoices.reduce((s, i) => s + L.money(i.total), 0);
+  const outstandingAr = invoices.reduce((s, i) => s + L.money(i.balance), 0);
+
+  const claims = (cache.claims || []).filter((c) => c.projectId === projectId);
+  const pendingClaims = L.pendingClaimsTotal(claims);
+  const paidClaims = L.paidClaimsTotal(claims);
+
+  const bills = (cache.bills || []).filter((b) => b.projectId === projectId);
+  const unpaidBills = bills.reduce((s, b) => s + L.money(b.balance), 0);
+
+  const paidExpenses = (cache.expenses || [])
+    .filter((e) => e.projectId === projectId && !e.claimId)
+    .reduce((s, e) => s + L.money(e.amount), 0);
+
+  const afterPending = L.money(net - pendingClaims);
+  const afterAll = L.money(afterPending - unpaidBills);
+  const marginPct = moneyIn > 0 ? L.money((net / moneyIn) * 100) : null;
+  const expensePct = moneyIn > 0 ? L.money((moneyOut / moneyIn) * 100) : null;
+
+  const tx = [];
+  invoices.forEach((i) => {
+    let st = 'pending';
+    if (!L.money(i.balance)) st = 'paid';
+    else if (i.status === 'partial') st = 'partial';
+    tx.push({
+      date: i.date || '',
+      type: 'Income',
+      dir: 'in',
+      category: accountLabel('4000'),
+      description: i.number || i.memo || 'Invoice',
+      person: clientName(i.clientId) || '—',
+      amount: L.money(i.total),
+      status: st,
+      paidDate: lastInvoiceCollectDate(i),
+    });
+  });
+  (cache.expenses || []).forEach((e) => {
+    if (e.projectId !== projectId || e.claimId) return;
+    tx.push({
+      date: e.date || '',
+      type: 'Expense',
+      dir: 'out',
+      category: accountLabel(e.accountCode),
+      description: e.memo || 'Expense',
+      person: '—',
+      amount: L.money(e.amount),
+      status: 'paid',
+      paidDate: e.date || '',
+    });
+  });
+  claims.forEach((c) => {
+    const paid = L.isPaidClaim(c);
+    tx.push({
+      date: c.date || '',
+      type: 'Claim',
+      dir: 'out',
+      category: accountLabel(c.accountCode),
+      description: (c.claimNo ? c.claimNo + ' · ' : '') + (c.memo || 'Claim'),
+      person: c.claimantName || c.submittedByName || workerName(c.claimantWorkerId) || '—',
+      amount: L.money(c.amount),
+      status: paid ? 'paid' : 'pending',
+      paidDate: paid ? c.paidDate || '' : '',
+    });
+  });
+  bills.forEach((b) => {
+    const paidAmt = L.money(L.money(b.amount) - L.money(b.balance));
+    let st = 'pending';
+    if (!L.money(b.balance)) st = 'paid';
+    else if (paidAmt > 0) st = 'partial';
+    tx.push({
+      date: b.date || '',
+      type: 'Expense',
+      dir: 'out',
+      category: accountLabel(b.accountCode),
+      description: b.memo || 'Bill',
+      person: b.vendorName || workerName(b.workerId) || '—',
+      amount: L.money(b.amount),
+      status: st,
+      paidDate: lastBillPayDate(b.id),
+    });
+  });
+  (cache.workerPayments || []).forEach((p) => {
+    if (p.projectId !== projectId) return;
+    tx.push({
+      date: p.date || '',
+      type: 'Expense',
+      dir: 'out',
+      category: accountLabel('5000'),
+      description: p.memo || 'Workforce payment',
+      person: p.workerName || workerName(p.workerId) || '—',
+      amount: L.money(p.amount),
+      status: 'paid',
+      paidDate: p.date || '',
+    });
+  });
+  (cache.journals || []).forEach((j) => {
+    if (j.projectId !== projectId || !L.isLiveJournal(j) || j.sourceType !== 'PSL') return;
+    let bankOut = 0;
+    let cat = 'Payroll';
+    (j.lines || []).forEach((l) => {
+      if (banks[l.accountCode]) bankOut += L.money(l.credit);
+      const acc = L.accountByCode(l.accountCode);
+      if (acc && acc.type === 'expense') cat = acc.name;
+    });
+    if (!bankOut) return;
+    tx.push({
+      date: j.date || '',
+      type: 'Expense',
+      dir: 'out',
+      category: cat,
+      description: j.memo || 'Payslip',
+      person: workerName(j.workerId) || '—',
+      amount: bankOut,
+      status: 'paid',
+      paidDate: j.date || '',
+    });
+  });
+  tx.sort(
+    (a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.description).localeCompare(String(a.description))
+  );
+
+  const catRows = Object.keys(catOut)
+    .map((k) => ({ label: k, amount: catOut[k] }))
+    .sort((a, b) => b.amount - a.amount);
+  const months = Object.keys(byMonth).sort();
+
+  return {
+    moneyIn,
+    moneyOut,
+    net,
+    pendingClaims,
+    paidClaims,
+    unpaidBills,
+    paidExpenses,
+    billed,
+    outstandingAr,
+    afterPending,
+    afterAll,
+    marginPct,
+    expensePct,
+    tx,
+    catRows,
+    months,
+    byMonth,
+  };
+}
+
+function renderOverview() {
+  const projects = window.TCVProjects ? window.TCVProjects.list() : [];
+  let projectId = selectedOverviewProjectId();
+  if (projectId && !projects.some((p) => p.id === projectId)) projectId = '';
+  let opts = '<option value="">Select a project…</option>';
+  projects.forEach((p) => {
+    opts +=
+      '<option value="' +
+      esc(p.id) +
+      '"' +
+      (p.id === projectId ? ' selected' : '') +
+      '>' +
+      esc(window.TCVProjects.label(p)) +
+      '</option>';
+  });
+
+  if (!projectId) {
+    $('viewRoot').innerHTML =
+      '<div class="panel"><h2>Project</h2>' +
+      '<div class="form-grid"><div><label>Project</label><select id="overviewProject">' +
+      opts +
+      '</select></div></div>' +
+      '<p class="muted">Pick a project to see cash in, cash out, pending claims, and the transactions tagged to it.</p></div>';
+    bindOverviewProject();
+    return;
+  }
+
+  const ov = buildProjectOverview(projectId);
+  const maxIo = Math.max(ov.moneyIn, ov.moneyOut, 1);
+  const maxCat = ov.catRows.length ? ov.catRows[0].amount : 1;
+  const maxMonth = ov.months.reduce((m, k) => Math.max(m, ov.byMonth[k].inn, ov.byMonth[k].out), 1);
+
+  const extra = [];
+  extra.push(
+    '<tr><td>Invoiced</td><td class="num">' +
+      rm(ov.billed) +
+      '</td></tr><tr><td>Outstanding AR</td><td class="num">' +
+      rm(ov.outstandingAr) +
+      '</td></tr>'
+  );
+  extra.push('<tr><td>Paid expenses (not claims)</td><td class="num">' + rm(ov.paidExpenses) + '</td></tr>');
+  extra.push('<tr><td>Paid claims</td><td class="num">' + rm(ov.paidClaims) + '</td></tr>');
+  extra.push('<tr><td>Unpaid bills</td><td class="num">' + rm(ov.unpaidBills) + '</td></tr>');
+  extra.push('<tr><td>Transactions</td><td class="num">' + ov.tx.length + '</td></tr>');
+  extra.push(
+    '<tr><td>Available before pending claims</td><td class="num"><strong>' + rm(ov.net) + '</strong></td></tr>'
+  );
+  extra.push(
+    '<tr><td>Expected after pending claims</td><td class="num"><strong>' + rm(ov.afterPending) + '</strong></td></tr>'
+  );
+  if (ov.unpaidBills) {
+    extra.push(
+      '<tr><td>Expected after pending claims and unpaid bills</td><td class="num"><strong>' +
+        rm(ov.afterAll) +
+        '</strong></td></tr>'
+    );
+  }
+  if (ov.marginPct != null) extra.push('<tr><td>Cash margin</td><td class="num">' + D.fmt(ov.marginPct) + '%</td></tr>');
+  if (ov.expensePct != null) {
+    extra.push('<tr><td>Cash spent vs received</td><td class="num">' + D.fmt(ov.expensePct) + '%</td></tr>');
+  }
+
+  const txRows = ov.tx
+    .map((r) => {
+      return (
+        '<tr><td>' +
+        esc(r.date) +
+        '</td><td>' +
+        esc(r.type) +
+        '</td><td>' +
+        esc(r.category) +
+        '</td><td>' +
+        esc(r.description) +
+        '</td><td>' +
+        esc(r.person) +
+        '</td><td class="num ' +
+        (r.dir === 'in' ? 'ov-amt-in' : 'ov-amt-out') +
+        '">' +
+        (r.dir === 'in' ? '+' : '−') +
+        ' ' +
+        rm(r.amount) +
+        '</td><td>' +
+        statusTag(r.status) +
+        '</td><td>' +
+        esc(r.paidDate || '—') +
+        '</td></tr>'
+      );
+    })
+    .join('');
+
+  $('viewRoot').innerHTML =
+    '<div class="panel"><h2>Project</h2>' +
+    '<div class="form-grid"><div><label>Project</label><select id="overviewProject">' +
+    opts +
+    '</select></div></div></div>' +
+    '<div class="kpi-grid">' +
+    kpi('Money in', rm(ov.moneyIn)) +
+    kpi('Money out', rm(ov.moneyOut)) +
+    kpi('Net balance', rm(ov.net), ov.net < 0 ? 'is-neg' : ov.moneyIn || ov.moneyOut ? 'is-ok' : '') +
+    kpi('Pending claims', rm(ov.pendingClaims)) +
+    '</div>' +
+    '<p class="muted">Money in is cash received (receipts and invoice collections). Money out is cash paid: expenses, paid claims, paid bills, and workforce. Pending claims are listed here but are not included in money out until they are marked paid on Claims.</p>' +
+    '<div class="panel"><h2>Position</h2>' +
+    '<table class="data-table"><thead><tr><th>Item</th><th class="num">Amount</th></tr></thead><tbody>' +
+    extra.join('') +
+    '</tbody></table></div>' +
+    (ov.moneyIn || ov.moneyOut
+      ? '<div class="panel"><h2>Income vs expenses (cash)</h2><div class="ov-bar-list">' +
+        ovBar('Money in', ov.moneyIn, maxIo, 'in') +
+        ovBar('Money out', ov.moneyOut, maxIo, 'out') +
+        '</div></div>'
+      : '') +
+    (ov.catRows.length
+      ? '<div class="panel"><h2>Where cash went</h2><div class="ov-bar-list">' +
+        ov.catRows
+          .slice(0, 8)
+          .map((r) => ovBar(r.label, r.amount, maxCat, 'out'))
+          .join('') +
+        '</div></div>'
+      : '') +
+    (ov.months.length
+      ? '<div class="panel"><h2>Cash by month</h2><table class="data-table"><thead><tr><th>Month</th><th class="num">In</th><th class="num">Out</th><th class="num">Net</th></tr></thead><tbody>' +
+        ov.months
+          .map((m) => {
+            const row = ov.byMonth[m];
+            const n = L.money(row.inn - row.out);
+            return (
+              '<tr><td>' +
+              esc(m) +
+              '</td><td class="num ov-amt-in">' +
+              rm(row.inn) +
+              '</td><td class="num ov-amt-out">' +
+              rm(row.out) +
+              '</td><td class="num">' +
+              rm(n) +
+              '</td></tr>'
+            );
+          })
+          .join('') +
+        '</tbody></table><div class="ov-bar-list ov-month-bars">' +
+        ov.months
+          .map((m) => {
+            const row = ov.byMonth[m];
+            return (
+              '<div class="ov-month">' +
+              '<span>' +
+              esc(m) +
+              '</span>' +
+              '<div class="ov-bar-track"><div class="ov-bar-fill" style="width:' +
+              ((row.inn / maxMonth) * 100).toFixed(1) +
+              '%"></div></div>' +
+              '<div class="ov-bar-track"><div class="ov-bar-fill out" style="width:' +
+              ((row.out / maxMonth) * 100).toFixed(1) +
+              '%"></div></div>' +
+              '</div>'
+            );
+          })
+          .join('') +
+        '</div></div>'
+      : '') +
+    '<div class="panel"><h2>Transactions</h2>' +
+    (ov.tx.length
+      ? '<table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Person</th><th class="num">Amount</th><th>Status</th><th>Paid</th></tr></thead><tbody>' +
+        txRows +
+        '</tbody></table>'
+      : '<p class="muted">No invoices, expenses, claims, bills, or workforce payments are tagged to this project yet.</p>') +
+    '</div>';
+  bindOverviewProject();
+}
+
+function bindOverviewProject() {
+  const sel = $('overviewProject');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    const id = sel.value;
+    try {
+      if (id) sessionStorage.setItem('tcvLedgerOverviewProject', id);
+      else sessionStorage.removeItem('tcvLedgerOverviewProject');
+    } catch (e) {}
+    const next = id ? '#overview?p=' + encodeURIComponent(id) : '#overview';
+    if (location.hash !== next) location.hash = next;
+    else renderOverview();
+  });
 }
 
 function invoiceStatusSelect(id, current) {
@@ -828,11 +1360,264 @@ function renderPay() {
   });
 }
 
-/* ---------- Expenses / bank / journal ---------- */
+/* ---------- Claims / expenses / bank / journal ---------- */
+let claimUi = { q: '', status: 'all' };
+
+function claimStatusTag(c) {
+  if (L.isPaidClaim(c)) return '<span class="tag paid">Paid</span>';
+  return '<span class="tag pending">Pending</span>';
+}
+
+function claimMatches(c) {
+  if (claimUi.status === 'pending' && L.isPaidClaim(c)) return false;
+  if (claimUi.status === 'paid' && !L.isPaidClaim(c)) return false;
+  const q = String(claimUi.q || '').trim().toLowerCase();
+  if (!q) return true;
+  const acc = L.accountByCode(c.accountCode);
+  const hay = [
+    c.claimNo,
+    c.id,
+    c.claimantName,
+    c.submittedByName,
+    c.submittedByEmail,
+    c.memo,
+    c.status,
+    c.date,
+    c.paidDate,
+    acc ? acc.name : '',
+    c.accountCode,
+    projectName(c.projectId),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return hay.indexOf(q) !== -1;
+}
+
+function renderClaims() {
+  const pendingTotal = L.pendingClaimsTotal(cache.claims);
+  const paidTotal = L.paidClaimsTotal(cache.claims);
+  $('viewRoot').innerHTML =
+    '<div class="kpi-grid">' +
+    kpi('Pending claims', rm(pendingTotal)) +
+    kpi('Paid claims', rm(paidTotal)) +
+    kpi('This month expenses', rm(journalExpenseNet(cache.journals, { from: thisMonth() + '-01', to: thisMonth() + '-31' }))) +
+    '</div>' +
+    '<div class="panel"><h2 id="claimFormTitle">New claim</h2>' +
+    '<p class="muted">A pending claim is not an expense. Mark it paid to post cash out and include it in totals.</p>' +
+    '<p class="muted" id="claimMeta"></p>' +
+    '<form id="claimForm" class="form-grid">' +
+    '<input type="hidden" name="id" value="">' +
+    '<div><label>Claim date</label><input type="date" name="date" value="' +
+    today() +
+    '"></div>' +
+    '<div><label>Claimed by</label><input type="text" name="claimantName" value="' +
+    esc(defaultClaimant()) +
+    '" required></div>' +
+    '<div><label>Amount (RM)</label><input type="number" step="0.01" name="amount" required></div>' +
+    '<div><label>Category</label><select name="accountCode">' +
+    expenseCodes() +
+    '</select></div>' +
+    '<div><label>Project</label><select name="projectId">' +
+    projectOptions('') +
+    '</select></div>' +
+    '<div class="span-2"><label>Description / reason</label><input type="text" name="memo" placeholder="e.g. Toll, petrol"></div>' +
+    '<div><label>Payment date</label><input type="date" name="paidDate" value=""></div>' +
+    '<div><label>Pay from bank</label><select name="bankAccountId">' +
+    bankOptions((L.defaultBankAccount() || {}).id) +
+    '</select></div>' +
+    '</form><div class="btn-row"><button class="btn" id="claimBtn">Save claim</button>' +
+    '<button class="btn" id="claimPayBtn">Mark as paid</button>' +
+    '<button class="btn ghost" id="claimNewBtn">New</button>' +
+    '<button class="btn danger" id="claimDelBtn" hidden>Delete</button></div></div>' +
+    '<div class="panel"><h2>All claims</h2>' +
+    '<div class="form-grid">' +
+    '<div><label>Search</label><input type="search" id="claimSearch" placeholder="ID, person, project, memo" value="' +
+    esc(claimUi.q) +
+    '"></div>' +
+    '<div><label>Status</label><select id="claimStatusFilter">' +
+    '<option value="all"' +
+    (claimUi.status === 'all' ? ' selected' : '') +
+    '>All</option>' +
+    '<option value="pending"' +
+    (claimUi.status === 'pending' ? ' selected' : '') +
+    '>Pending</option>' +
+    '<option value="paid"' +
+    (claimUi.status === 'paid' ? ' selected' : '') +
+    '>Paid</option>' +
+    '</select></div></div>' +
+    '<div id="claimTableWrap"></div></div>';
+
+  function claimRowsHtml() {
+    const filtered = (cache.claims || []).filter(claimMatches);
+    if (!filtered.length) return '<p class="muted">No claims match this filter.</p>';
+    return (
+      '<table class="data-table"><thead><tr><th>Claim ID</th><th>Date</th><th>Claimed by</th><th>Category</th><th>Project</th><th>Description</th><th class="num">Amount</th><th>Status</th><th>Paid</th><th></th></tr></thead><tbody>' +
+      filtered
+        .map((c) => {
+          const acc = L.accountByCode(c.accountCode);
+          return (
+            '<tr><td>' +
+            esc(c.claimNo || c.id) +
+            '</td><td>' +
+            esc(c.date || '') +
+            '</td><td>' +
+            esc(c.claimantName || c.submittedByName || '—') +
+            '</td><td>' +
+            esc(acc ? acc.name : c.accountCode || '') +
+            '</td><td>' +
+            esc(projectName(c.projectId) || '—') +
+            '</td><td>' +
+            esc(c.memo || '') +
+            '</td><td class="num">' +
+            rm(c.amount) +
+            '</td><td>' +
+            claimStatusTag(c) +
+            '</td><td>' +
+            esc(c.paidDate || '—') +
+            '</td><td class="actions"><button class="btn ghost" data-edit-claim="' +
+            esc(c.id) +
+            '">Edit</button></td></tr>'
+          );
+        })
+        .join('') +
+      '</tbody></table>'
+    );
+  }
+
+  function bindClaimEdit() {
+    $('viewRoot').querySelectorAll('[data-edit-claim]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const c = cache.claims.find((x) => x.id === btn.getAttribute('data-edit-claim'));
+        if (!c) return;
+        const form = $('claimForm');
+        setForm(form, 'id', c.id);
+        setForm(form, 'date', c.date);
+        setForm(form, 'claimantName', c.claimantName || c.submittedByName || '');
+        setForm(form, 'amount', c.amount);
+        setForm(form, 'accountCode', c.accountCode);
+        setForm(form, 'projectId', c.projectId);
+        setForm(form, 'memo', c.memo);
+        setForm(form, 'paidDate', c.paidDate || '');
+        setForm(form, 'bankAccountId', c.bankAccountId || (L.defaultBankAccount() || {}).id);
+        $('claimFormTitle').textContent = 'Edit ' + (c.claimNo || 'claim');
+        $('claimBtn').textContent = 'Save changes';
+        $('claimDelBtn').hidden = L.isPaidClaim(c);
+        $('claimMeta').textContent =
+          'Claim ID ' +
+          (c.claimNo || c.id) +
+          ' · submitted by ' +
+          (c.submittedByName || c.submittedByEmail || c.claimantName || '—') +
+          ' · created ' +
+          String(c.createdAt || '').slice(0, 10) +
+          (c.updatedAt ? ' · updated ' + String(c.updatedAt).slice(0, 10) : '');
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  function paintClaimTable() {
+    $('claimTableWrap').innerHTML = claimRowsHtml();
+    bindClaimEdit();
+  }
+
+  paintClaimTable();
+
+  function claimPayload() {
+    const form = $('claimForm');
+    return {
+      id: formVal(form, 'id'),
+      date: formVal(form, 'date'),
+      claimantName: formVal(form, 'claimantName'),
+      amount: formVal(form, 'amount'),
+      accountCode: formVal(form, 'accountCode'),
+      projectId: formVal(form, 'projectId'),
+      memo: formVal(form, 'memo'),
+      paidDate: formVal(form, 'paidDate'),
+      bankAccountId: formVal(form, 'bankAccountId'),
+    };
+  }
+
+  function resetClaimForm() {
+    const form = $('claimForm');
+    setForm(form, 'id', '');
+    setForm(form, 'date', today());
+    setForm(form, 'claimantName', defaultClaimant());
+    setForm(form, 'amount', '');
+    setForm(form, 'memo', '');
+    setForm(form, 'paidDate', '');
+    setForm(form, 'bankAccountId', (L.defaultBankAccount() || {}).id);
+    $('claimFormTitle').textContent = 'New claim';
+    $('claimBtn').textContent = 'Save claim';
+    $('claimDelBtn').hidden = true;
+    $('claimMeta').textContent = '';
+  }
+
+  $('claimBtn').addEventListener('click', async () => {
+    const payload = claimPayload();
+    try {
+      if (payload.id) await L.updateClaim(payload);
+      else await L.recordClaim(payload);
+      status(payload.id ? 'Claim updated.' : 'Claim saved as pending.');
+      await reload();
+    } catch (e) {
+      status(e.message || 'Could not save claim.');
+    }
+  });
+  $('claimPayBtn').addEventListener('click', async () => {
+    const payload = claimPayload();
+    try {
+      let id = payload.id;
+      if (!id) {
+        const created = await L.recordClaim(payload);
+        id = created.id;
+      } else {
+        await L.updateClaim(payload);
+      }
+      const existing = (cache.claims || []).find((x) => x.id === id);
+      if (existing && L.isPaidClaim(existing)) {
+        status('Claim is already paid. Changes were saved.');
+        await reload();
+        return;
+      }
+      await L.payClaim({
+        id,
+        paidDate: payload.paidDate || today(),
+        bankAccountId: payload.bankAccountId,
+      });
+      status('Claim marked paid and posted as an expense.');
+      await reload();
+    } catch (e) {
+      status(e.message || 'Could not pay claim.');
+    }
+  });
+  $('claimNewBtn').addEventListener('click', resetClaimForm);
+  $('claimDelBtn').addEventListener('click', async () => {
+    const id = formVal($('claimForm'), 'id');
+    if (!id) return;
+    if (!confirm('Delete this pending claim?')) return;
+    try {
+      await L.deleteClaim(id);
+      status('Claim deleted.');
+      await reload();
+    } catch (e) {
+      status(e.message || 'Could not delete claim.');
+    }
+  });
+  $('claimSearch').addEventListener('input', () => {
+    claimUi.q = $('claimSearch').value;
+    paintClaimTable();
+  });
+  $('claimStatusFilter').addEventListener('change', () => {
+    claimUi.status = $('claimStatusFilter').value;
+    paintClaimTable();
+  });
+}
+
 function renderExpenses() {
   const rows = cache.expenses
     .map((e) => {
       const acc = L.accountByCode(e.accountCode);
+      const claimNo = claimNoForExpense(e);
       return (
         '<tr><td>' +
         esc(e.date) +
@@ -842,6 +1627,8 @@ function renderExpenses() {
         esc(projectName(e.projectId) || '—') +
         '</td><td>' +
         esc(e.memo || '') +
+        '</td><td>' +
+        (claimNo ? esc(claimNo) : 'Expense') +
         '</td><td class="num">' +
         rm(e.amount) +
         '</td><td class="actions"><button class="btn ghost" data-edit-exp="' +
@@ -852,6 +1639,7 @@ function renderExpenses() {
     .join('');
   $('viewRoot').innerHTML =
     '<div class="panel"><h2 id="expFormTitle">Paid expense</h2>' +
+    '<p class="muted">This list is paid money only. Staff reimbursements start on <a href="#claims">Claims</a> and appear here after they are marked paid. Do not re-enter a paid claim as a second expense.</p>' +
     '<form id="expForm" class="form-grid">' +
     '<input type="hidden" name="id" value="">' +
     '<div><label>Date</label><input type="date" name="date" value="' +
@@ -870,9 +1658,9 @@ function renderExpenses() {
     '<div class="span-2"><label>Memo</label><input type="text" name="memo" placeholder="e.g. Domain renewal"></div>' +
     '</form><div class="btn-row"><button class="btn" id="expBtn">Save expense</button>' +
     '<button class="btn ghost" id="expNewBtn">New</button></div></div>' +
-    '<div class="panel"><h2>Recent expenses</h2>' +
+    '<div class="panel"><h2>Paid expenses</h2>' +
     (rows
-      ? '<table class="data-table"><thead><tr><th>Date</th><th>Category</th><th>Project</th><th>Memo</th><th class="num">Amount</th><th></th></tr></thead><tbody>' +
+      ? '<table class="data-table"><thead><tr><th>Date</th><th>Category</th><th>Project</th><th>Memo</th><th>Source</th><th class="num">Amount</th><th></th></tr></thead><tbody>' +
         rows +
         '</tbody></table>'
       : '<p class="muted">No paid expenses yet.</p>') +
@@ -1406,7 +2194,14 @@ function reportHtml(kind, range) {
   const drawings = (ytd['3100'] && ytd['3100'].net) || 0;
   if (kind === 'pl') {
     const pl = plRows(bals, drawings);
-    return reportHeader('PROFIT & LOSS', range) + reportTable(pl.rows);
+    const pending = L.pendingClaimsTotal(cache.claims);
+    return (
+      reportHeader('PROFIT & LOSS', range) +
+      reportTable(pl.rows) +
+      '<p class="muted">Pending claims (' +
+      rm(pending) +
+      ') are not included. Paid claims post as expenses on the payment date.</p>'
+    );
   }
   if (kind === 'bs') {
     const all = L.balancesFromJournals(cache.journals, { to: range.to });
@@ -1820,9 +2615,11 @@ function renderSettings() {
 
 const RENDER = {
   dashboard: renderDashboard,
+  overview: renderOverview,
   sales: renderSales,
   purchases: renderPurchases,
   pay: renderPay,
+  claims: renderClaims,
   expenses: renderExpenses,
   bank: renderBank,
   journal: renderJournal,

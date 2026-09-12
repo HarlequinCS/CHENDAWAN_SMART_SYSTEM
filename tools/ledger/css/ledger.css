@@ -76,6 +76,73 @@
   margin-top: 6px;
 }
 
+.kpi .val.is-neg {
+  color: #b3413e;
+}
+
+.kpi .val.is-ok {
+  color: #1b6b3a;
+}
+
+.tag.unpaid,
+.tag.partial {
+  background: #fff4e5;
+  color: #8a5a12;
+}
+
+.ov-amt-in {
+  color: #1b6b3a;
+  font-weight: 700;
+}
+
+.ov-amt-out {
+  color: #b3413e;
+  font-weight: 700;
+}
+
+.ov-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ov-bar-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 160px) 1fr 110px;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.ov-bar-track {
+  height: 10px;
+  background: var(--light-fill);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ov-bar-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.ov-bar-fill.out {
+  background: #8a5a12;
+}
+
+.ov-month {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.ov-month-bars {
+  margin-top: 12px;
+}
+
 .panel {
   background: var(--panel-bg);
   border: 1px solid var(--border);
@@ -204,6 +271,11 @@
 .tag.paid {
   background: #e7f4ea;
   color: #1b6b3a;
+}
+
+.tag.pending {
+  background: #f4eee4;
+  color: #6b4f1b;
 }
 
 .tag.credited,
@@ -342,5 +414,9 @@
 
   .data-table {
     min-width: 560px;
+  }
+
+  .ov-bar-row {
+    grid-template-columns: 1fr;
   }
 }
