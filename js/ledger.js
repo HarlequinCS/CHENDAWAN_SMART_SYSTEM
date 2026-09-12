@@ -255,6 +255,7 @@ window.TCVLedger = (function () {
       'vendors',
       'recurring',
       'workerPayments',
+      'claims',
     ];
     for (let i = 0; i < cols.length; i++) {
       await wipeCollection(cols[i]);
@@ -560,6 +561,13 @@ window.TCVLedger = (function () {
 
   async function listBills() {
     const snap = await db().collection('bills').get();
+    return snap.docs
+      .map((d) => Object.assign({}, d.data(), { id: d.id }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }
+
+  async function listBillPayments() {
+    const snap = await db().collection('billPayments').get();
     return snap.docs
       .map((d) => Object.assign({}, d.data(), { id: d.id }))
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
@@ -1409,6 +1417,7 @@ window.TCVLedger = (function () {
       memo: data.memo || '',
       bankAccountId: data.bankAccountId || '',
       journalId: jid,
+      claimId: data.claimId || '',
       createdAt: now(),
     };
     await ref.set(row);
@@ -1437,19 +1446,234 @@ window.TCVLedger = (function () {
         lines: [line(expenseCode, amount, 0, memo), line(bankCode, 0, amount, memo)],
       });
     }
+    const projectId = data.projectId != null ? data.projectId : exp.projectId || '';
+    const bankAccountId = data.bankAccountId != null ? data.bankAccountId : exp.bankAccountId || '';
     await ref.set(
       {
         date,
         amount,
         accountCode: expenseCode,
-        projectId: data.projectId != null ? data.projectId : exp.projectId || '',
+        projectId,
         memo,
-        bankAccountId: data.bankAccountId != null ? data.bankAccountId : exp.bankAccountId || '',
+        bankAccountId,
         updatedAt: now(),
       },
       { merge: true }
     );
+    if (exp.claimId) {
+      await db()
+        .collection('claims')
+        .doc(exp.claimId)
+        .set(
+          {
+            amount,
+            accountCode: expenseCode,
+            projectId,
+            memo,
+            bankAccountId,
+            paidDate: date,
+            status: 'paid',
+            updatedAt: now(),
+          },
+          { merge: true }
+        );
+    }
     return data.id;
+  }
+
+  function currentActor() {
+    const u = window.TCVFirebase.currentUser && window.TCVFirebase.currentUser();
+    if (!u) return { uid: '', email: '', name: '' };
+    return {
+      uid: u.uid || '',
+      email: u.email || '',
+      name: String(u.displayName || u.email || '').trim(),
+    };
+  }
+
+  function formatClaimNo(year, n) {
+    return 'CLM/' + year + '/' + String(n).padStart(3, '0');
+  }
+
+  async function nextClaimNo(dateStr) {
+    const year = parseInt(String(dateStr || '').slice(0, 4), 10) || new Date().getFullYear();
+    const ref = db().collection('counters').doc('claims');
+    return db().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      let last = 0;
+      if (snap.exists) {
+        const data = snap.data() || {};
+        if (parseInt(data.year, 10) === year) last = parseInt(data.last, 10) || 0;
+      }
+      const next = last + 1;
+      tx.set(ref, { year, last: next, updatedAt: now() }, { merge: true });
+      return formatClaimNo(year, next);
+    });
+  }
+
+  function claimFields(data, existing) {
+    existing = existing || {};
+    const actor = currentActor();
+    const amount = money(data.amount != null ? data.amount : existing.amount);
+    const date = data.date || existing.date || window.TCVNumbers.isoToday();
+    const claimantName = String(
+      data.claimantName != null ? data.claimantName : existing.claimantName || actor.name || actor.email
+    ).trim();
+    if (!claimantName) throw new Error('Enter who made the claim.');
+    if (amount <= 0) throw new Error('Enter a claim amount.');
+    return {
+      date,
+      claimantName,
+      claimantWorkerId: data.claimantWorkerId != null ? data.claimantWorkerId : existing.claimantWorkerId || '',
+      accountCode: data.accountCode || existing.accountCode || CODES.MISC,
+      projectId: data.projectId != null ? data.projectId : existing.projectId || '',
+      memo: data.memo != null ? data.memo : existing.memo || '',
+      amount,
+      submittedByUid: existing.submittedByUid || actor.uid,
+      submittedByEmail: existing.submittedByEmail || actor.email,
+      submittedByName: existing.submittedByName || actor.name || actor.email,
+    };
+  }
+
+  async function listClaims() {
+    const snap = await db().collection('claims').get();
+    return snap.docs
+      .map((d) => Object.assign({}, d.data(), { id: d.id }))
+      .sort((a, b) => {
+        const dcmp = String(b.date || '').localeCompare(String(a.date || ''));
+        if (dcmp) return dcmp;
+        return String(b.claimNo || b.createdAt || '').localeCompare(String(a.claimNo || a.createdAt || ''));
+      });
+  }
+
+  function isPaidClaim(row) {
+    return !!(row && row.status === 'paid');
+  }
+
+  function pendingClaimsTotal(claims) {
+    return money(
+      (claims || []).reduce((s, c) => {
+        if (isPaidClaim(c)) return s;
+        return s + money(c.amount);
+      }, 0)
+    );
+  }
+
+  function paidClaimsTotal(claims) {
+    return money(
+      (claims || []).reduce((s, c) => {
+        if (!isPaidClaim(c)) return s;
+        return s + money(c.amount);
+      }, 0)
+    );
+  }
+
+  async function recordClaim(data) {
+    await ensureSeeded();
+    const fields = claimFields(data, {});
+    const ref = db().collection('claims').doc();
+    const claimNo = await nextClaimNo(fields.date);
+    const row = Object.assign({}, fields, {
+      claimNo,
+      status: 'pending',
+      paidDate: '',
+      bankAccountId: '',
+      expenseId: '',
+      journalId: '',
+      createdAt: now(),
+      updatedAt: now(),
+    });
+    await ref.set(row);
+    return Object.assign({ id: ref.id }, row);
+  }
+
+  async function updateClaim(data) {
+    await ensureSeeded();
+    if (!data.id) throw new Error('Select a claim to edit.');
+    const ref = db().collection('claims').doc(data.id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('Claim not found.');
+    const claim = snap.data() || {};
+    const fields = claimFields(data, claim);
+    const patch = Object.assign({}, fields, { updatedAt: now() });
+    if (isPaidClaim(claim)) {
+      patch.status = 'paid';
+      patch.paidDate = data.paidDate || claim.paidDate || fields.date;
+      patch.bankAccountId = data.bankAccountId != null ? data.bankAccountId : claim.bankAccountId || '';
+      if (claim.expenseId) {
+        await updateExpense({
+          id: claim.expenseId,
+          date: patch.paidDate,
+          amount: fields.amount,
+          accountCode: fields.accountCode,
+          projectId: fields.projectId,
+          bankAccountId: patch.bankAccountId,
+          memo: fields.memo || claim.claimNo || 'Claim',
+        });
+      }
+    } else {
+      patch.status = 'pending';
+      patch.paidDate = '';
+    }
+    await ref.set(patch, { merge: true });
+    return data.id;
+  }
+
+  async function payClaim(data) {
+    await ensureSeeded();
+    if (!data.id) throw new Error('Select a claim to pay.');
+    const ref = db().collection('claims').doc(data.id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('Claim not found.');
+    const claim = snap.data() || {};
+    if (isPaidClaim(claim) && claim.expenseId) {
+      throw new Error('This claim is already paid.');
+    }
+    const paidDate = data.paidDate || data.date || window.TCVNumbers.isoToday();
+    const bankAccountId = data.bankAccountId || (defaultBankAccount() && defaultBankAccount().id) || '';
+    if (!bankAccountId) throw new Error('Select a bank to pay from.');
+    const memo = claim.memo || claim.claimNo || 'Claim';
+    const exp = await recordExpense({
+      date: paidDate,
+      amount: claim.amount,
+      accountCode: claim.accountCode,
+      projectId: claim.projectId,
+      bankAccountId,
+      memo,
+      claimId: data.id,
+    });
+    await ref.set(
+      {
+        status: 'paid',
+        paidDate,
+        bankAccountId,
+        expenseId: exp.id,
+        journalId: exp.journalId || '',
+        updatedAt: now(),
+      },
+      { merge: true }
+    );
+    return Object.assign({ id: data.id }, claim, {
+      status: 'paid',
+      paidDate,
+      bankAccountId,
+      expenseId: exp.id,
+      journalId: exp.journalId || '',
+    });
+  }
+
+  async function deleteClaim(id) {
+    await ensureSeeded();
+    if (!id) throw new Error('Select a claim to delete.');
+    const ref = db().collection('claims').doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error('Claim not found.');
+    const claim = snap.data() || {};
+    if (isPaidClaim(claim)) {
+      throw new Error('Paid claims cannot be deleted. Edit the linked expense or void its journal.');
+    }
+    await ref.delete();
+    return id;
   }
 
   async function payWorker(data) {
@@ -1813,6 +2037,7 @@ window.TCVLedger = (function () {
       'bills',
       'billPayments',
       'expenses',
+      'claims',
       'journals',
       'accounts',
       'bankAccounts',
@@ -1903,6 +2128,8 @@ window.TCVLedger = (function () {
     listInvoices,
     listCreditNotes,
     listBills,
+    listBillPayments,
+    listClaims,
     listExpenses,
     listVendors,
     upsertVendor,
@@ -1917,6 +2144,13 @@ window.TCVLedger = (function () {
     payBill,
     recordExpense,
     updateExpense,
+    recordClaim,
+    updateClaim,
+    payClaim,
+    deleteClaim,
+    pendingClaimsTotal,
+    paidClaimsTotal,
+    isPaidClaim,
     payWorker,
     listWorkerPayments,
     recordDrawing,

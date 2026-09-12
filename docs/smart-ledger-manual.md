@@ -14,20 +14,22 @@ This is the operator guide for Smart Ledger: **when** to open each screen, **why
 4. [Golden rules](#4-golden-rules)
 5. [Which screen for which event](#5-which-screen-for-which-event)
 6. [Dashboard](#6-dashboard)
+6a. [Project overview](#6a-project-overview)
 7. [Sales (AR)](#7-sales-ar)
 8. [Purchases (AP)](#8-purchases-ap)
 9. [Pay workforce](#9-pay-workforce)
-10. [Expenses](#10-expenses)
-11. [Bank & park](#11-bank--park)
-12. [Journal](#12-journal)
-13. [Reports](#13-reports)
-14. [Settings](#14-settings)
-15. [Documents that post automatically](#15-documents-that-post-automatically)
-16. [Chart of accounts](#16-chart-of-accounts)
-17. [Routines](#17-routines)
-18. [Worked examples](#18-worked-examples)
-19. [Mistakes to avoid](#19-mistakes-to-avoid)
-20. [What this ledger does not do](#20-what-this-ledger-does-not-do)
+10. [Claims](#10-claims)
+11. [Expenses](#11-expenses)
+12. [Bank & park](#12-bank--park)
+13. [Journal](#13-journal)
+14. [Reports](#14-reports)
+15. [Settings](#15-settings)
+16. [Documents that post automatically](#16-documents-that-post-automatically)
+17. [Chart of accounts](#17-chart-of-accounts)
+18. [Routines](#18-routines)
+19. [Worked examples](#19-worked-examples)
+20. [Mistakes to avoid](#20-mistakes-to-avoid)
+21. [What this ledger does not do](#21-what-this-ledger-does-not-do)
 
 ---
 
@@ -175,12 +177,15 @@ You do not need to memorise accounting theory. Remember the **story**:
 | Pay a contractor / freelancer today | **Pay workforce** | Cash out + contractor cost |
 | Need a payment-advice PDF | **Payslip / Payment Advice** | PDF + ledger in one step |
 | Pay an employee with statutory | **Payslip** (employee) | Salary + EPF / SOCSO / EIS / PCB |
-| Paid Grab, domain, Canva, petrol now | **Expenses** | Cash out + overhead |
+| Staff reimbursement not paid yet | **Claims** | Pending only — not an expense |
+| Reimbursement actually paid | **Claims → Mark as paid** | Posts the expense and bank out |
+| Company paid Grab, domain, Canva now | **Expenses** | Cash out + overhead (or a paid claim) |
 | Move spare cash to investment | **Bank & park** | Asset swap, not P&L |
 | Bring parked money back | **Bank & park** | Reverse the park |
 | Investment paid a dividend | **Bank & park** (investment selected) | Other income |
 | Take owner living money | **Bank & park → Drawing** | Equity, not expense |
 | Typo on a posted journal | **Journal** | Edit or void |
+| Is this job still in the black? | **Project overview** | Cash in vs cash out and pending claims for one project |
 | Month-end pack / Form B worksheet | **Reports** | Print or PDF |
 | New bank, new GL code, lock August | **Settings** | Structure of the book |
 
@@ -198,13 +203,36 @@ You do not need to memorise accounting theory. Remember the **story**:
 | **Invested / parked** | Investment account | Spare cash you chose to park |
 | **AR outstanding** | Invoices not fully collected | Follow up anything aging past 30 days |
 | **AP outstanding** | Bills not fully paid | Pay before it hurts cash |
+| **This month expenses** | Live expense journals this month | Unpaid claims are **not** in this number |
+| **Pending claims** | Sum of unpaid claims | Not cash out; not P&amp;L |
 | **This month P&L** | Income minus expenses this calendar month | Drawings do **not** reduce this number |
 
 **Where the money sits** lists each account and **Total liquid** (bank + invested).
 
 **Unpaid invoices aging** groups AR into 0–30 / 31–60 / 61–90 / 90+ days.
 
-**Project billed vs costs** uses invoices and expense journals tagged to a project. Use it to see if a job is still profitable **before** you discount the next invoice.
+**Project billed vs costs** uses invoices and expense journals tagged to a project. Unpaid claims do not appear as costs. Click a project name to open **Project overview**.
+
+---
+
+## 6a. Project overview
+
+**When:** You need the cash position of one job: money in, money out, what is left, and claims still unpaid.
+
+**Why:** Dashboard is company-wide. This page is one project. It does not post anything. It reads the same invoices, receipts, expenses, bills, workforce payments, and claims as the rest of the book.
+
+| Tile | What it means |
+| --- | --- |
+| **Money in** | Cash received on that project (receipts and invoice collections). Issuing an invoice does not increase this until cash arrives. |
+| **Money out** | Cash actually paid: expenses, paid claims, paid bills, workforce. |
+| **Net balance** | Money in − money out |
+| **Pending claims** | Unpaid reimbursements tagged to the project. **Not** included in money out. |
+
+**Available before pending claims** is the same as net balance. **Expected after pending claims** subtracts those unpaid claims so you can see the obligation before you mark them paid.
+
+Unpaid supplier bills are listed separately. They are also not money out until you pay them on Purchases.
+
+Tag the project on every invoice, expense, bill, claim, and workforce payment. Untagged entries will not appear here.
 
 ---
 
@@ -327,7 +355,33 @@ The Payslip download posts salary or contractor cost, net pay, and statutory pay
 
 ---
 
-## 10. Expenses
+## 10. Claims
+
+**When:** Someone needs a reimbursement (toll, petrol, site travel) and the company has **not** paid it yet.
+
+**Why:** A claim is a request. It is **not** an expense until you mark it paid. That keeps unpaid amounts out of P&L, bank, and project costs.
+
+### How
+
+1. **Claims** → claim date, who claimed it, amount, category, project, reason.
+2. **Save claim**. Status is **Pending**. Dashboard **Pending claims** goes up. Expenses and P&L do not change.
+3. When you actually pay, open the claim, set payment date and bank, **Mark as paid**.
+4. The ledger posts one expense + journal (debit category, credit bank) and links it with `claimId` / `expenseId`. The same money is not entered twice.
+
+### Statuses
+
+| Status | Meaning | In expenses / P&L / bank? |
+| --- | --- | --- |
+| Pending | Submitted, not paid | No |
+| Paid | Cash left the bank | Yes, on the **payment date** |
+
+Edit a pending claim without changing status. Edit a paid claim to keep the claim and the linked expense in sync. Delete is only for pending claims.
+
+Historical paid rows already on **Expenses** (for example Toll RM 10 and Duit Minyak RM 50) stay as expenses. New reimbursements start on Claims.
+
+---
+
+## 11. Expenses
 
 **When:** You already paid a company cost from Bank Islam (or another listed bank) **today**.
 
@@ -356,12 +410,13 @@ Journal: Debit the category · Credit Bank.
 | Owner personal transfer | **Bank & park → Owner drawing** |
 | Parking spare cash | **Bank & park → Park or withdraw** |
 | Unpaid supplier invoice | **Purchases** |
+| Unpaid staff reimbursement | **Claims** (pending until paid) |
 | Contractor milestone | **Pay workforce** or **Payslip** |
 | Client refund of a billed job | **Journal** or reduce / void the invoice — do not expense it as “software” |
 
 ---
 
-## 11. Bank & park
+## 12. Bank & park
 
 **When:** Money moved between company accounts, you took a drawing, you earned an investment return, or you are matching the bank statement.
 
@@ -413,7 +468,7 @@ Type the statement balance. The difference is ledger vs bank. If it is not zero,
 
 ---
 
-## 12. Journal
+## 13. Journal
 
 **When:** Something does not fit a form, or a posted entry is wrong.
 
@@ -440,7 +495,7 @@ Always write a memo a stranger could understand.
 
 ---
 
-## 13. Reports
+## 14. Reports
 
 **When:** Month end, when a client asks for a statement of job cost, or when you prepare Form B.
 
@@ -461,7 +516,7 @@ Gross profit on the P&L is income minus `5xxx` job costs. Net profit then subtra
 
 ---
 
-## 14. Settings
+## 15. Settings
 
 **When:** Setup, a new bank product, a new expense category, or closing a month.
 
@@ -490,7 +545,7 @@ Use for AR or AP brought forward from paper books. It posts the account against 
 
 ---
 
-## 15. Documents that post automatically
+## 16. Documents that post automatically
 
 These tools write the ledger when you **commit / download** the PDF. You should still glance at Sales, Pay workforce, or Journal afterwards.
 
@@ -515,7 +570,7 @@ If an invoice PDF exists but Sales is empty, use **Sales → Post missing invoic
 
 ---
 
-## 16. Chart of accounts
+## 17. Chart of accounts
 
 Posting uses **codes**, not display names.
 
@@ -575,7 +630,7 @@ Posting uses **codes**, not display names.
 
 ---
 
-## 17. Routines
+## 18. Routines
 
 ### Every payment day
 
@@ -610,7 +665,7 @@ Posting uses **codes**, not display names.
 
 ---
 
-## 18. Worked examples
+## 19. Worked examples
 
 ### A. Bill a website job, then get paid
 
@@ -654,7 +709,7 @@ Posting uses **codes**, not display names.
 
 ---
 
-## 19. Mistakes to avoid
+## 20. Mistakes to avoid
 
 | Mistake | What goes wrong | Fix |
 | --- | --- | --- |
@@ -670,7 +725,7 @@ Posting uses **codes**, not display names.
 
 ---
 
-## 20. What this ledger does not do
+## 21. What this ledger does not do
 
 These are **out of scope** today. Do not expect the screens to invent them:
 
@@ -695,7 +750,9 @@ Workforce  ───►  Payslip  ─── posts ───►   Journal / Bank
                  Quotation / legal         (no post)
 
                  Pay now, no PDF  ──────►  Pay workforce
-                 Paid small cost  ──────►  Expenses
+                 Reimbursement unpaid  ──►  Claims (pending)
+                 Reimbursement paid    ──►  Claims → Mark as paid
+                 Paid small cost       ──►  Expenses
                  Owe someone      ──────►  Purchases
                  Park / draw      ──────►  Bank & park
                  Close the month  ──────►  Reports + Settings lock
