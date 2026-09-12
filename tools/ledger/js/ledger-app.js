@@ -1369,6 +1369,24 @@ function claimStatusTag(c) {
   return '<span class="tag pending">Pending</span>';
 }
 
+function claimStatusSelect(c) {
+  const cur = L.isPaidClaim(c) ? 'paid' : 'pending';
+  return (
+    '<select class="status-select tag ' +
+    esc(cur) +
+    '" data-claim-status="' +
+    esc(c.id) +
+    '" aria-label="Claim status">' +
+    '<option value="pending"' +
+    (cur === 'pending' ? ' selected' : '') +
+    '>Pending</option>' +
+    '<option value="paid"' +
+    (cur === 'paid' ? ' selected' : '') +
+    '>Paid</option>' +
+    '</select>'
+  );
+}
+
 function claimMatches(c) {
   if (claimUi.status === 'pending' && L.isPaidClaim(c)) return false;
   if (claimUi.status === 'paid' && !L.isPaidClaim(c)) return false;
@@ -1422,7 +1440,13 @@ function renderClaims() {
     projectOptions('') +
     '</select></div>' +
     '<div class="span-2"><label>Description / reason</label><input type="text" name="memo" placeholder="e.g. Toll, petrol"></div>' +
-    '<div><label>Payment date</label><input type="date" name="paidDate" value=""></div>' +
+    '<div><label>Status</label><select name="status">' +
+    '<option value="pending" selected>Pending</option>' +
+    '<option value="paid">Paid</option>' +
+    '</select></div>' +
+    '<div><label>Payment date</label><input type="date" name="paidDate" value="' +
+    today() +
+    '"></div>' +
     '<div><label>Pay from bank</label><select name="bankAccountId">' +
     bankOptions((L.defaultBankAccount() || {}).id) +
     '</select></div>' +
@@ -1478,7 +1502,7 @@ function renderClaims() {
             '</td><td class="num">' +
             rm(c.amount) +
             '</td><td>' +
-            claimStatusTag(c) +
+            claimStatusSelect(c) +
             '</td><td>' +
             esc(c.paidDate || '—') +
             '</td><td class="actions"><button class="btn ghost" data-edit-claim="' +
@@ -1504,7 +1528,8 @@ function renderClaims() {
         setForm(form, 'accountCode', c.accountCode);
         setForm(form, 'projectId', c.projectId);
         setForm(form, 'memo', c.memo);
-        setForm(form, 'paidDate', c.paidDate || '');
+        setForm(form, 'status', L.isPaidClaim(c) ? 'paid' : 'pending');
+        setForm(form, 'paidDate', c.paidDate || today());
         setForm(form, 'bankAccountId', c.bankAccountId || (L.defaultBankAccount() || {}).id);
         $('claimFormTitle').textContent = 'Edit ' + (c.claimNo || 'claim');
         $('claimBtn').textContent = 'Save changes';
@@ -1522,9 +1547,37 @@ function renderClaims() {
     });
   }
 
+  function bindClaimStatus() {
+    $('viewRoot').querySelectorAll('[data-claim-status]').forEach((sel) => {
+      sel.addEventListener('change', async () => {
+        const id = sel.getAttribute('data-claim-status');
+        const row = (cache.claims || []).find((x) => x.id === id);
+        if (!row) return;
+        if (sel.value === 'pending') {
+          sel.value = L.isPaidClaim(row) ? 'paid' : 'pending';
+          if (L.isPaidClaim(row)) status('Paid claims stay paid. Void the linked expense journal to reverse.');
+          return;
+        }
+        try {
+          await L.payClaim({
+            id,
+            paidDate: today(),
+            bankAccountId: (L.defaultBankAccount() || {}).id,
+          });
+          status('Claim marked paid and posted as an expense.');
+          await reload();
+        } catch (e) {
+          sel.value = 'pending';
+          status(e.message || 'Could not pay claim.');
+        }
+      });
+    });
+  }
+
   function paintClaimTable() {
     $('claimTableWrap').innerHTML = claimRowsHtml();
     bindClaimEdit();
+    bindClaimStatus();
   }
 
   paintClaimTable();
@@ -1539,6 +1592,7 @@ function renderClaims() {
       accountCode: formVal(form, 'accountCode'),
       projectId: formVal(form, 'projectId'),
       memo: formVal(form, 'memo'),
+      status: formVal(form, 'status') || 'pending',
       paidDate: formVal(form, 'paidDate'),
       bankAccountId: formVal(form, 'bankAccountId'),
     };
@@ -1551,7 +1605,8 @@ function renderClaims() {
     setForm(form, 'claimantName', defaultClaimant());
     setForm(form, 'amount', '');
     setForm(form, 'memo', '');
-    setForm(form, 'paidDate', '');
+    setForm(form, 'status', 'pending');
+    setForm(form, 'paidDate', today());
     setForm(form, 'bankAccountId', (L.defaultBankAccount() || {}).id);
     $('claimFormTitle').textContent = 'New claim';
     $('claimBtn').textContent = 'Save claim';
@@ -1559,9 +1614,36 @@ function renderClaims() {
     $('claimMeta').textContent = '';
   }
 
+  async function markClaimPaid(payload) {
+    let id = payload.id;
+    if (!id) {
+      const created = await L.recordClaim(payload);
+      id = created.id;
+    } else {
+      await L.updateClaim(payload);
+    }
+    const existing = (cache.claims || []).find((x) => x.id === id);
+    if (existing && L.isPaidClaim(existing)) {
+      status('Claim is already paid. Changes were saved.');
+      await reload();
+      return;
+    }
+    await L.payClaim({
+      id,
+      paidDate: payload.paidDate || today(),
+      bankAccountId: payload.bankAccountId || (L.defaultBankAccount() || {}).id,
+    });
+    status('Claim marked paid and posted as an expense.');
+    await reload();
+  }
+
   $('claimBtn').addEventListener('click', async () => {
     const payload = claimPayload();
     try {
+      if (payload.status === 'paid') {
+        await markClaimPaid(payload);
+        return;
+      }
       if (payload.id) await L.updateClaim(payload);
       else await L.recordClaim(payload);
       status(payload.id ? 'Claim updated.' : 'Claim saved as pending.');
@@ -1571,28 +1653,8 @@ function renderClaims() {
     }
   });
   $('claimPayBtn').addEventListener('click', async () => {
-    const payload = claimPayload();
     try {
-      let id = payload.id;
-      if (!id) {
-        const created = await L.recordClaim(payload);
-        id = created.id;
-      } else {
-        await L.updateClaim(payload);
-      }
-      const existing = (cache.claims || []).find((x) => x.id === id);
-      if (existing && L.isPaidClaim(existing)) {
-        status('Claim is already paid. Changes were saved.');
-        await reload();
-        return;
-      }
-      await L.payClaim({
-        id,
-        paidDate: payload.paidDate || today(),
-        bankAccountId: payload.bankAccountId,
-      });
-      status('Claim marked paid and posted as an expense.');
-      await reload();
+      await markClaimPaid(claimPayload());
     } catch (e) {
       status(e.message || 'Could not pay claim.');
     }
